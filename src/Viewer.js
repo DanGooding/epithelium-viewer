@@ -9,6 +9,7 @@ function Viewer(props) {
   const canvasRef = useRef(null);
   const imageLoaderRef = useRef(new ImageLoader())
   const [scroll, setScroll] = useState({x: 0, y: 0});
+  const [highlightAmt, setHighlightAmt] = useState(0.5)
 
   function drawTile(ctx, src, row, column, setStyle) {
     imageLoaderRef.current.loadImage(src, (img) => {
@@ -46,7 +47,7 @@ function Viewer(props) {
     for (const [row, row_tiles] of mask_tiles.entries()) {
       for (const [column, src] of row_tiles.entries()) {
         drawTile(ctx, src, row, column, () => {
-          ctx.globalAlpha = 0.7;
+          ctx.globalAlpha = highlightAmt;
           ctx.globalCompositeOperation = 'multiply'
         })
       }
@@ -54,8 +55,25 @@ function Viewer(props) {
   })
 
   return (
-    <div id="viewer" onClick={() => setScroll({x: scroll.x + 20, y: scroll.y + 20})}>
-      <canvas ref={canvasRef} width={props.width} height={props.height} />
+    <div id="viewer">
+      <div>
+        <canvas
+          ref={canvasRef} 
+          width={props.width} 
+          height={props.height} 
+          onClick={() => setScroll({x: scroll.x + 20, y: scroll.y + 20})}
+        />
+      </div>
+      <label>Highlight
+        <input 
+          type="range" 
+          min="0" 
+          max="1" 
+          step="0.01"
+          value={highlightAmt} 
+          onChange={e => setHighlightAmt(e.target.value)}
+        />
+      </label>
     </div>
   )
 }
