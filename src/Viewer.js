@@ -14,8 +14,8 @@ class Viewer extends React.Component {
 
     const display_tile_width = tile_width / 2;
 
-    for (const [column, row_tiles] of biopsy_tiles.entries()) {
-      for (const [row, src] of row_tiles.entries()) {
+    for (const [row, row_tiles] of biopsy_tiles.entries()) {
+      for (const [column, src] of row_tiles.entries()) {
         const img = new Image();
         img.onload = () => {
           ctx.save()
@@ -30,8 +30,8 @@ class Viewer extends React.Component {
       }
     }
 
-    for (const [column, row_tiles] of mask_tiles.entries()) {
-      for (const [row, src] of row_tiles.entries()) {
+    for (const [row, row_tiles] of mask_tiles.entries()) {
+      for (const [column, src] of row_tiles.entries()) {
         const img = new Image();
         img.onload = () => {
           ctx.save()
