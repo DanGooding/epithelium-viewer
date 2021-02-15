@@ -1,8 +1,9 @@
+import Viewer from './Viewer'
 
 function App() {
   return (
     <div>
-      app
+      <Viewer width={1000} height={800}/>
     </div>
   );
 }
