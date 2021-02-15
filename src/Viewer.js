@@ -1,16 +1,13 @@
-
-import React from 'react';
+import { useEffect, useRef } from 'react';
 import { biopsy_tiles, mask_tiles, tile_width } from './tiles'
 import './Viewer.css'
 
-class Viewer extends React.Component {
-  constructor(props) {
-    super(props);
-    this.canvasRef = React.createRef();
-  }
+function Viewer(props) {
 
-  componentDidMount() {
-    const ctx = this.canvasRef.current.getContext('2d');
+  const canvasRef = useRef(null);
+
+  useEffect(() => {
+    const ctx = canvasRef.current.getContext('2d');
 
     const display_tile_width = tile_width / 2;
 
@@ -51,17 +48,13 @@ class Viewer extends React.Component {
     // TODO: this method reloads images on every draw !!
     
  
-  }
+  })
 
-  render() {
-    return (
-      <div id="viewer">
-        <canvas ref={this.canvasRef} width={this.props.width} height={this.props.height} />
-      </div>
-    )
-
-  }
-
+  return (
+    <div id="viewer">
+      <canvas ref={canvasRef} width={props.width} height={props.height} />
+    </div>
+  )
 }
 
 export default Viewer;
