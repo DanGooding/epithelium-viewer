@@ -11,12 +11,26 @@ function Viewer(props) {
   const [scroll, setScroll] = useState({x: 0, y: 0});
   const [highlightAmt, setHighlightAmt] = useState(0.5)
 
+  function grid_to_canvas_coord(row, column) {
+    return {
+      x: column * display_tile_width - scroll.x, 
+      y: row * display_tile_width - scroll.y
+    };
+  }
+
+  function canvas_to_grid_coord(x, y) {
+    return {
+      row: Math.floor((y + scroll.y) / display_tile_width),
+      column: Math.floor((x + scroll.x) / display_tile_width)
+    };
+  }
+
   function drawTile(ctx, src, row, column, setStyle) {
     imageLoaderRef.current.loadImage(src, (img) => {
 
-      const x = column * display_tile_width - scroll.x
-      const y = row * display_tile_width - scroll.y
+      const {x, y} = grid_to_canvas_coord(row, column);
       
+      // TODO: this check is now redundant
       if (x + display_tile_width < 0 || y + display_tile_width < 0
        || x > ctx.canvas.width || y > ctx.canvas.height) {
         return;
@@ -38,18 +52,29 @@ function Viewer(props) {
     const ctx = canvasRef.current.getContext('2d');
     ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
-    for (const [row, row_tiles] of biopsy_tiles.entries()) {
-      for (const [column, src] of row_tiles.entries()) {
-        drawTile(ctx, src, row, column);
+    let min_cell = canvas_to_grid_coord(0, 0);
+    let max_cell = canvas_to_grid_coord(ctx.canvas.width, ctx.canvas.height);
+    min_cell.row = Math.max(min_cell.row, 0);
+    min_cell.column = Math.max(min_cell.row, 0);
+    
+    let grid_width = biopsy_tiles.length;
+    let grid_height = biopsy_tiles[0].length;
+    
+    max_cell.row = Math.min(max_cell.row, grid_height - 1);
+    max_cell.column = Math.min(max_cell.column, grid_width - 1);
+
+    for (let row = min_cell.row; row <= max_cell.row; row++) {
+      for (let column = min_cell.column; column <= max_cell.column; column++) {
+        drawTile(ctx, biopsy_tiles[row][column], row, column);
       }
     }
 
-    for (const [row, row_tiles] of mask_tiles.entries()) {
-      for (const [column, src] of row_tiles.entries()) {
-        drawTile(ctx, src, row, column, () => {
+    for (let row = min_cell.row; row <= max_cell.row; row++) {
+      for (let column = min_cell.column; column <= max_cell.column; column++) {
+        drawTile(ctx, mask_tiles[row][column], row, column, () => {
           ctx.globalAlpha = highlightAmt;
           ctx.globalCompositeOperation = 'multiply'
-        })
+        });
       }
     }
   })
