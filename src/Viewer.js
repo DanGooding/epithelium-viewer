@@ -26,6 +26,7 @@ function Viewer(props) {
   }
 
   function drawTile(ctx, src, row, column, setStyle) {
+    // TODO: dont draw null tiles - where?
     imageLoaderRef.current.loadImage(src, (img) => {
 
       const {x, y} = grid_to_canvas_coord(row, column);
@@ -55,26 +56,21 @@ function Viewer(props) {
     let min_cell = canvas_to_grid_coord(0, 0);
     let max_cell = canvas_to_grid_coord(ctx.canvas.width, ctx.canvas.height);
     min_cell.row = Math.max(min_cell.row, 0);
-    min_cell.column = Math.max(min_cell.row, 0);
+    min_cell.column = Math.max(min_cell.column, 0);
     
-    let grid_width = biopsy_tiles.length;
-    let grid_height = biopsy_tiles[0].length;
+    const grid_width = biopsy_tiles.length;
+    const grid_height = biopsy_tiles[0].length;
     
     max_cell.row = Math.min(max_cell.row, grid_height - 1);
     max_cell.column = Math.min(max_cell.column, grid_width - 1);
 
     for (let row = min_cell.row; row <= max_cell.row; row++) {
       for (let column = min_cell.column; column <= max_cell.column; column++) {
-        drawTile(ctx, biopsy_tiles[row][column], row, column);
-      }
-    }
-
-    for (let row = min_cell.row; row <= max_cell.row; row++) {
-      for (let column = min_cell.column; column <= max_cell.column; column++) {
-        drawTile(ctx, mask_tiles[row][column], row, column, () => {
-          ctx.globalAlpha = highlightAmt;
-          ctx.globalCompositeOperation = 'multiply'
-        });
+          drawTile(ctx, biopsy_tiles[row][column], row, column);
+          drawTile(ctx, mask_tiles[row][column], row, column, () => {
+            ctx.globalAlpha = highlightAmt;
+            ctx.globalCompositeOperation = 'screen'
+          });
       }
     }
   })
@@ -86,7 +82,6 @@ function Viewer(props) {
           ref={canvasRef} 
           width={props.width} 
           height={props.height} 
-          onClick={() => setScroll({x: scroll.x + 20, y: scroll.y + 20})}
         />
       </div>
       <label>Highlight
