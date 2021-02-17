@@ -3,36 +3,49 @@ import { biopsy_tiles, mask_tiles, tile_width } from './tiles'
 import './Viewer.css'
 import ImageLoader from './ImageLoader'
 
-const display_tile_width = tile_width / 2;
-
 function Viewer(props) {
   const canvasRef = useRef(null);
   const imageLoaderRef = useRef(new ImageLoader())
   const [cameraPos, setCameraPos] = useState({x: 0, y: 0});
+  const [zoomAmt, setZoomAmt] = useState(1.0);
   const [highlightAmt, setHighlightAmt] = useState(0.5)
 
-  function grid_to_canvas_coord(row, column) {
+  // TODO: track zooming to mouse
+  function grid_to_canvas({x, y}) {
     return {
-      x: column * display_tile_width - cameraPos.x, 
-      y: row * display_tile_width - cameraPos.y
+      x: (x - cameraPos.x) * zoomAmt + props.width / 2, 
+      y: (y - cameraPos.y) * zoomAmt + props.height / 2
     };
   }
 
-  function canvas_to_grid_coord(x, y) {
+  function canvas_to_grid({x, y}) {
     return {
-      row: Math.floor((y + cameraPos.y) / display_tile_width),
-      column: Math.floor((x + cameraPos.x) / display_tile_width)
+      x: (x - props.width / 2) / zoomAmt + cameraPos.x,
+      y: (y - props.height / 2) / zoomAmt + cameraPos.y
+    };
+  }
+
+  function grid_coord_to_cell({x, y}) {
+    return {
+      row: Math.floor(y / tile_width),
+      column: Math.floor(x / tile_width)
+    };
+  }
+
+  function grid_cell_to_coord({row, column}) {
+    return  {
+      x: column * tile_width,
+      y: row * tile_width
     };
   }
 
   function drawTile(ctx, src, row, column, setStyle) {
-    // TODO: dont draw null tiles - where?
     if (src == null) return;
     imageLoaderRef.current.loadImage(src, (img) => {
 
-      const {x, y} = grid_to_canvas_coord(row, column);
-      
-      // TODO: this check is now redundant
+      const {x, y} = grid_to_canvas(grid_cell_to_coord({row, column}));
+      const display_tile_width = tile_width * zoomAmt;
+
       if (x + display_tile_width < 0 || y + display_tile_width < 0
        || x > ctx.canvas.width || y > ctx.canvas.height) {
         return;
@@ -56,8 +69,8 @@ function Viewer(props) {
     ctx.fillStyle = 'grey';
     ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
-    let min_cell = canvas_to_grid_coord(0, 0);
-    let max_cell = canvas_to_grid_coord(ctx.canvas.width, ctx.canvas.height);
+    let min_cell = grid_coord_to_cell(canvas_to_grid({x: 0, y: 0}));
+    let max_cell = grid_coord_to_cell(canvas_to_grid({x: ctx.canvas.width, y: ctx.canvas.height}));
     min_cell.row = Math.max(min_cell.row, 0);
     min_cell.column = Math.max(min_cell.column, 0);
     
@@ -78,6 +91,23 @@ function Viewer(props) {
     }
   })
 
+  function handleMouseMove(e) { // pan
+    if (e.buttons != 0) { // if dragging
+      setCameraPos({
+        x: cameraPos.x - e.movementX / zoomAmt, 
+        y: cameraPos.y - e.movementY / zoomAmt
+      });
+    }
+  }
+  function handleWheel(e) { // zoom
+    // TODO: can't preventdefault here?
+    if (e.deltaY < 0) {
+      setZoomAmt(Math.min(zoomAmt / 0.9, 5));
+    }else if (e.deltaY > 0) {
+      setZoomAmt(Math.max(zoomAmt * 0.9, 0.2));
+    }
+  }
+
   return (
     <div id="viewer">
       <div>
@@ -85,11 +115,8 @@ function Viewer(props) {
           ref={canvasRef} 
           width={props.width} 
           height={props.height} 
-          onMouseMove={e => {
-            if (e.buttons != 0) {
-              setCameraPos({x: cameraPos.x - e.movementX, y: cameraPos.y - e.movementY})
-            }
-          }}
+          onMouseMove={handleMouseMove}
+          onWheel={handleWheel}
         />
       </div>
       <label>Highlight
