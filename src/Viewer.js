@@ -8,25 +8,26 @@ const display_tile_width = tile_width / 2;
 function Viewer(props) {
   const canvasRef = useRef(null);
   const imageLoaderRef = useRef(new ImageLoader())
-  const [scroll, setScroll] = useState({x: 0, y: 0});
+  const [cameraPos, setCameraPos] = useState({x: 0, y: 0});
   const [highlightAmt, setHighlightAmt] = useState(0.5)
 
   function grid_to_canvas_coord(row, column) {
     return {
-      x: column * display_tile_width - scroll.x, 
-      y: row * display_tile_width - scroll.y
+      x: column * display_tile_width - cameraPos.x, 
+      y: row * display_tile_width - cameraPos.y
     };
   }
 
   function canvas_to_grid_coord(x, y) {
     return {
-      row: Math.floor((y + scroll.y) / display_tile_width),
-      column: Math.floor((x + scroll.x) / display_tile_width)
+      row: Math.floor((y + cameraPos.y) / display_tile_width),
+      column: Math.floor((x + cameraPos.x) / display_tile_width)
     };
   }
 
   function drawTile(ctx, src, row, column, setStyle) {
     // TODO: dont draw null tiles - where?
+    if (src == null) return;
     imageLoaderRef.current.loadImage(src, (img) => {
 
       const {x, y} = grid_to_canvas_coord(row, column);
@@ -52,6 +53,8 @@ function Viewer(props) {
   useEffect(() => {
     const ctx = canvasRef.current.getContext('2d');
     ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    ctx.fillStyle = 'grey';
+    ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
     let min_cell = canvas_to_grid_coord(0, 0);
     let max_cell = canvas_to_grid_coord(ctx.canvas.width, ctx.canvas.height);
@@ -82,6 +85,11 @@ function Viewer(props) {
           ref={canvasRef} 
           width={props.width} 
           height={props.height} 
+          onMouseMove={e => {
+            if (e.buttons != 0) {
+              setCameraPos({x: cameraPos.x - e.movementX, y: cameraPos.y - e.movementY})
+            }
+          }}
         />
       </div>
       <label>Highlight
