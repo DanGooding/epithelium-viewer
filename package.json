@@ -1,6 +1,8 @@
 {
   "name": "epithelium-viewer",
   "version": "0.1.0",
+  "productName": "Epithelium Viewer",
+  "main": "main/main.js",
   "private": true,
   "dependencies": {
     "@testing-library/jest-dom": "^5.11.9",
@@ -11,11 +13,28 @@
     "react-scripts": "4.0.2",
     "web-vitals": "^1.1.0"
   },
+  "homepage": "./",
   "scripts": {
-    "start": "react-scripts start",
+    "start": "export BROWSER=none && react-scripts start",
+    "start-windows": "set BROWSER=none && react-scripts start",
+    "start-electron": "export ELECTRON_START_URL=http://localhost:3000 && electron .",
+    "start-electron-windows": "set ELECTRON_START_URL=http://localhost:3000 && electron .",
     "build": "react-scripts build",
+    "build-electron": "mkdir .\\build\\src && robocopy main .\\build\\main /S",
+    "package": "electron-builder build --win -c.extraMetadata.main=build/main/main.js --publish never",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
+  },
+  "build": {
+    "files": [
+      "build/**/*",
+      "node_modules/**/*"
+    ],
+    "publish": {
+      "provider": "github",
+      "repo": "_",
+      "owner": "_"
+    }
   },
   "eslintConfig": {
     "extends": [
@@ -34,5 +53,9 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "devDependencies": {
+    "electron": "^11.3.0",
+    "electron-builder": "^22.9.1"
   }
 }
