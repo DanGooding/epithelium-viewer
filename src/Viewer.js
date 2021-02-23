@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { biopsy_tiles, mask_tiles, tile_width } from './tiles'
+import { tileWidth, buildTileGrids } from './tiles'
 import './Viewer.css'
 import ImageLoader from './ImageLoader'
+import { channels } from './shared/constants';
+const { ipcRenderer } = window;
 
 function Viewer(props) {
   const canvasRef = useRef(null);
@@ -9,33 +11,41 @@ function Viewer(props) {
   const [cameraPos, setCameraPos] = useState({x: 0, y: 0});
   const [zoomAmt, setZoomAmt] = useState(1.0);
   const [highlightAmt, setHighlightAmt] = useState(0.5)
+  const [grid, setGrid] = useState({biopsyTiles: [], maskTiles: [], width: 0, height: 0});
+
+  useEffect(() => {
+    ipcRenderer.send(channels.TILES);
+    ipcRenderer.once(channels.TILES, (event, {tiles}) => {
+      setGrid(buildTileGrids(tiles));
+    });
+  }, []);
 
   // TODO: track zooming to mouse
-  function grid_to_canvas({x, y}) {
+  function gridToCanvas({x, y}) {
     return {
       x: (x - cameraPos.x) * zoomAmt + props.width / 2, 
       y: (y - cameraPos.y) * zoomAmt + props.height / 2
     };
   }
 
-  function canvas_to_grid({x, y}) {
+  function canvasToGrid({x, y}) {
     return {
       x: (x - props.width / 2) / zoomAmt + cameraPos.x,
       y: (y - props.height / 2) / zoomAmt + cameraPos.y
     };
   }
 
-  function grid_coord_to_cell({x, y}) {
+  function gridCoordToCell({x, y}) {
     return {
-      row: Math.floor(y / tile_width),
-      column: Math.floor(x / tile_width)
+      row: Math.floor(y / tileWidth),
+      column: Math.floor(x / tileWidth)
     };
   }
 
-  function grid_cell_to_coord({row, column}) {
+  function gridCellToCoord({row, column}) {
     return  {
-      x: column * tile_width,
-      y: row * tile_width
+      x: column * tileWidth,
+      y: row * tileWidth
     };
   }
 
@@ -43,10 +53,10 @@ function Viewer(props) {
     if (src == null) return;
     imageLoaderRef.current.loadImage(src, (img) => {
 
-      const {x, y} = grid_to_canvas(grid_cell_to_coord({row, column}));
-      const display_tile_width = tile_width * zoomAmt;
+      const {x, y} = gridToCanvas(gridCellToCoord({row, column}));
+      const displayTileWidth = tileWidth * zoomAmt;
 
-      if (x + display_tile_width < 0 || y + display_tile_width < 0
+      if (x + displayTileWidth < 0 || y + displayTileWidth < 0
        || x > ctx.canvas.width || y > ctx.canvas.height) {
         return;
       }
@@ -56,8 +66,8 @@ function Viewer(props) {
       ctx.drawImage(img, 
         x, 
         y, 
-        display_tile_width, 
-        display_tile_width);
+        displayTileWidth, 
+        displayTileWidth);
       ctx.restore()
     })
   }
@@ -69,21 +79,20 @@ function Viewer(props) {
     ctx.fillStyle = 'grey';
     ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
-    let min_cell = grid_coord_to_cell(canvas_to_grid({x: 0, y: 0}));
-    let max_cell = grid_coord_to_cell(canvas_to_grid({x: ctx.canvas.width, y: ctx.canvas.height}));
-    min_cell.row = Math.max(min_cell.row, 0);
-    min_cell.column = Math.max(min_cell.column, 0);
+    let minCell = gridCoordToCell(canvasToGrid({x: 0, y: 0}));
+    let maxCell = gridCoordToCell(canvasToGrid({x: ctx.canvas.width, y: ctx.canvas.height}));
+    minCell.row = Math.max(minCell.row, 0);
+    minCell.column = Math.max(minCell.column, 0);
     
-    const grid_width = biopsy_tiles.length;
-    const grid_height = biopsy_tiles[0].length;
-    
-    max_cell.row = Math.min(max_cell.row, grid_height - 1);
-    max_cell.column = Math.min(max_cell.column, grid_width - 1);
+    maxCell.row = Math.min(maxCell.row, grid.height - 1);
+    maxCell.column = Math.min(maxCell.column, grid.width - 1);
 
-    for (let row = min_cell.row; row <= max_cell.row; row++) {
-      for (let column = min_cell.column; column <= max_cell.column; column++) {
-          drawTile(ctx, biopsy_tiles[row][column], row, column);
-          drawTile(ctx, mask_tiles[row][column], row, column, () => {
+    debugger;
+
+    for (let row = minCell.row; row <= maxCell.row; row++) {
+      for (let column = minCell.column; column <= maxCell.column; column++) {
+          drawTile(ctx, grid.biopsyTiles[row][column], row, column);
+          drawTile(ctx, grid.maskTiles[row][column], row, column, () => {
             ctx.globalAlpha = highlightAmt;
             ctx.globalCompositeOperation = 'screen'
           });

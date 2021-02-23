@@ -1,5 +1,5 @@
 module.exports = {
   channels: {
-    TEST: 'test'
+    TILES: 'tiles'
   }
 };

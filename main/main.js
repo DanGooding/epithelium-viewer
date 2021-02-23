@@ -1,6 +1,8 @@
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 const url = require('url');
+const { channels } = require('../src/shared/constants');
+const { allTiles } = require('./tile_paths');
 
 const createWindow = () => {
   const startURL = process.env.ELECTRON_START_URL || 
@@ -38,4 +40,11 @@ app.on('activate', () => {
   if (BrowserWindow.getAllWindows().length === 0) {
     createWindow();
   }
+});
+
+// request for tiles
+ipcMain.on(channels.TILES, (event) => {
+  event.sender.send(channels.TILES, {
+    tiles: allTiles
+  });
 });

@@ -1,5 +1,5 @@
 
-export const all_tiles = [
+module.exports.allTiles = [
 'images/5096 HE.tif - Series 0/5096 HE.tif - Series 0 [x=10752,y=10752,w=1536,h=1536]-labelled.png',
 'images/5096 HE.tif - Series 0/5096 HE.tif - Series 0 [x=10752,y=10752,w=1536,h=1536].png',
 'images/5096 HE.tif - Series 0/5096 HE.tif - Series 0 [x=10752,y=12288,w=1536,h=1536]-labelled.png',
