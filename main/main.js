@@ -74,10 +74,28 @@ app.on('activate', () => {
   }
 });
 
+let runningChildProcesses = new Map(); // pid: ChildProcess
+
+app.on('before-quit', () => {
+  runningChildProcesses.forEach(process => process.kill());
+});
+
+
+// TODO: a general version for any subprocess
+// execute a qupath command, throwing an error when it fails to spawn
+function runQupath(qupathPath, command, callback) {
+  const qupathProcess = execFile(qupathPath, command, result => {
+    runningChildProcesses.delete(qupathProcess.pid);
+    callback(result);
+  });
+  runningChildProcesses.set(qupathProcess.pid, qupathProcess);
+}
+
 ipcMain.on(channels.QUPATH_CHECK, (event, args) => {
   const qupathPath = args.path;
   try {
-    execFile(qupathPath, ['--version'], (error, stdout, stderr) => {
+    runQupath(qupathPath, ['--version'], (error, stdout, stderr) => {
+
       if (error) {
         event.sender.send(channels.QUPATH_CHECK, {
           success: false
@@ -100,7 +118,6 @@ ipcMain.on(channels.QUPATH_CHECK, (event, args) => {
       success: false
     });
   }
-
 });
 
 // request for tiles
@@ -148,12 +165,8 @@ ipcMain.on(channels.TILES, (event, args) => {
     });
 
     try {
-      // run script
-      execFile(qupath, command, (error, stdout, stderr) => {
-        // script done
-
+      runQupath(qupath, command, (error, stdout, stderr) => {
         // TODO check stdout, stderr for non warnings
-
         if (error) {
           event.sender.send(channels.TILES, {error: 'QuPath script error: ' + error});
           return;
@@ -165,11 +178,9 @@ ipcMain.on(channels.TILES, (event, args) => {
           });
         }, 200);
       });
-  
     }catch (error) {
       event.sender.send(channels.TILES, {error: 'QuPath error: ' + error});
     }
   });
 });
-
 
