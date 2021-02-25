@@ -1,7 +1,6 @@
 
 import { tileSize } from './shared/constants';
 
-const tileRealWidth = tileSize.width * tileSize.downsampling;
 const tilePattern = /\[x=(\d+),y=(\d+),w=(\d+),h=(\d+)\](-labelled)?.png$/;
 
 // add *new* tiles to the grid(s)
@@ -17,22 +16,22 @@ export function updateTileGrid(grid, newTiles) {
     const y = parseInt(match[2]);
     const w = parseInt(match[3]);
     const h = parseInt(match[4]);
-    if (x % tileRealWidth != 0 || y % tileRealWidth != 0) {
+    if (x % tileSize.realWidth != 0 || y % tileSize.realWidth != 0) {
       console.error(`unexpected tile position: ${x} ${y}`);
     }
-    if (w != tileRealWidth || h != tileRealWidth) {
+    if (w != tileSize.realWidth || h != tileSize.realWidth) {
       console.error(`unexpected tile size: ${w} ${h}`);
     }
     
     const isMask = match[5] != null;
     
-    const row    = y / tileRealWidth;
-    const column = x / tileRealWidth
+    const row    = y / tileSize.realWidth;
+    const column = x / tileSize.realWidth;
 
-    if (row > maxRow) maxRow = row;
-    if (column > maxColumn) maxColumn = column;
+    maxRow = Math.max(maxRow, row);
+    maxColumn = Math.max(maxColumn, column);
 
-    return [[row, column], isMask, src];
+    return {row, column, isMask, src};
   })
 
   let newGrid = {
@@ -61,7 +60,7 @@ export function updateTileGrid(grid, newTiles) {
     }
   }
 
-  for (const [[row, column], isMask, src] of locatedTiles) {
+  for (const {row, column, isMask, src} of locatedTiles) {
     if (isMask) {
       newGrid.maskTiles[row][column] = src;
     } else {

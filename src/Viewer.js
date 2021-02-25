@@ -8,6 +8,7 @@ const { ipcRenderer } = window.electron;
 function Viewer(props) {
   const canvasRef = useRef(null);
   const imageLoaderRef = useRef(new ImageLoader())
+  // camera lives in 'biopsy' coordinate space
   const [cameraPos, setCameraPos] = useState({ x: 0, y: 0 });
   const [zoomAmt, setZoomAmt] = useState(1.0);
   const [highlightAmt, setHighlightAmt] = useState(0.5)
@@ -29,39 +30,41 @@ function Viewer(props) {
   }, []);
 
   // TODO: track zooming to mouse
-  function gridToCanvas({ x, y }) {
+  function biopsyToCanvas({ x, y }) {
     return {
-      x: (x - cameraPos.x) * zoomAmt + props.width / 2,
-      y: (y - cameraPos.y) * zoomAmt + props.height / 2
+      x: (x - cameraPos.x) * zoomAmt / tileSize.downsampling + props.width / 2,
+      y: (y - cameraPos.y) * zoomAmt / tileSize.downsampling + props.height / 2
     };
   }
 
-  function canvasToGrid({ x, y }) {
+  function canvasToBiopsy({ x, y }) {
     return {
-      x: (x - props.width / 2) / zoomAmt + cameraPos.x,
-      y: (y - props.height / 2) / zoomAmt + cameraPos.y
+      x: (x - props.width  / 2) * tileSize.downsampling / zoomAmt + cameraPos.x,
+      y: (y - props.height / 2) * tileSize.downsampling / zoomAmt + cameraPos.y
     };
   }
 
-  function gridCoordToCell({ x, y }) {
+  function biopsyToGrid({ x, y }) {
     return {
-      row: Math.floor(y / tileSize.width),
-      column: Math.floor(x / tileSize.width)
+      row:    Math.floor(y / tileSize.realWidth),
+      column: Math.floor(x / tileSize.realWidth)
     };
   }
 
-  function gridCellToCoord({ row, column }) {
+  function gridToBiopsy({ row, column }) {
     return {
-      x: column * tileSize.width,
-      y: row * tileSize.width
+      x: column * tileSize.realWidth,
+      y: row    * tileSize.realWidth
     };
   }
 
-  function drawTile(ctx, src, row, column, setStyle) {
-    if (src == null) return;
-    imageLoaderRef.current.loadImage(src, (img) => {
-
-      const { x, y } = gridToCanvas(gridCellToCoord({ row, column }));
+  function drawTile(ctx, src, row, column, setStyle, defaultColor = null) {
+    if (src == null && defaultColor == null) return;
+    imageLoaderRef.current.loadImage(src, img => {
+      if (img == null) return;
+      
+      // TODO: another case of callback capturing old value
+      const { x, y } = biopsyToCanvas(gridToBiopsy({ row, column }));
       const displayTileWidth = tileSize.width * zoomAmt;
 
       if (x + displayTileWidth < 0 || y + displayTileWidth < 0
@@ -71,11 +74,7 @@ function Viewer(props) {
 
       ctx.save()
       if (setStyle != null) setStyle();
-      ctx.drawImage(img,
-        x,
-        y,
-        displayTileWidth,
-        displayTileWidth);
+      ctx.drawImage(img, x, y, displayTileWidth, displayTileWidth);
       ctx.restore()
     })
   }
@@ -87,8 +86,8 @@ function Viewer(props) {
     ctx.fillStyle = 'grey';
     ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
-    let minCell = gridCoordToCell(canvasToGrid({ x: 0, y: 0 }));
-    let maxCell = gridCoordToCell(canvasToGrid({ x: ctx.canvas.width, y: ctx.canvas.height }));
+    let minCell = biopsyToGrid(canvasToBiopsy({ x: 0, y: 0 }));
+    let maxCell = biopsyToGrid(canvasToBiopsy({ x: ctx.canvas.width, y: ctx.canvas.height }));
     minCell.row = Math.max(minCell.row, 0);
     minCell.column = Math.max(minCell.column, 0);
 
@@ -97,7 +96,7 @@ function Viewer(props) {
 
     for (let row = minCell.row; row <= maxCell.row; row++) {
       for (let column = minCell.column; column <= maxCell.column; column++) {
-        drawTile(ctx, grid.biopsyTiles[row][column], row, column);
+        drawTile(ctx, grid.biopsyTiles[row][column], row, column, null, 'black');
         drawTile(ctx, grid.maskTiles[row][column], row, column, () => {
           ctx.globalAlpha = highlightAmt;
           ctx.globalCompositeOperation = 'screen'
@@ -109,8 +108,8 @@ function Viewer(props) {
   function handleMouseMove(e) { // pan
     if (e.buttons != 0) { // if dragging
       setCameraPos({
-        x: cameraPos.x - e.movementX / zoomAmt,
-        y: cameraPos.y - e.movementY / zoomAmt
+        x: cameraPos.x - e.movementX * tileSize.downsampling / zoomAmt,
+        y: cameraPos.y - e.movementY * tileSize.downsampling / zoomAmt
       });
     }
   }
@@ -144,6 +143,8 @@ function Viewer(props) {
           onChange={e => setHighlightAmt(e.target.value)}
         />
       </label>
+      <span>{Math.round(cameraPos.x)}, {Math.round(cameraPos.y)} px</span>
+      <span> Cache: {imageLoaderRef.current.images.length}</span>
     </div>
   )
 }

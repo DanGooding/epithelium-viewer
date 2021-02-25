@@ -162,7 +162,6 @@ ipcMain.on(channels.TILES, (event, args) => {
         setTimeout(() => {
           watcher.close().then(() => {
             sendTileBatch();
-            console.log('sent last tiles');
           });
         }, 200);
       });
