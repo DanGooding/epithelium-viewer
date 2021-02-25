@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { tileWidth, buildTileGrids } from './tiles'
+import { updateTileGrid } from './tiles'
 import './Viewer.css'
 import ImageLoader from './ImageLoader'
-import { channels } from './shared/constants';
+import { channels, tileSize } from './shared/constants';
 const { ipcRenderer } = window.electron;
 
 function Viewer(props) {
@@ -12,16 +12,19 @@ function Viewer(props) {
   const [zoomAmt, setZoomAmt] = useState(1.0);
   const [highlightAmt, setHighlightAmt] = useState(0.5)
   const [grid, setGrid] = useState({ biopsyTiles: [], maskTiles: [], width: 0, height: 0 });
+  const gridRef = useRef();
+  // use this in callbacks, so they only capture the container, 
+  // not the state itself, therefore ensuring they see the current state
+  gridRef.current = grid;
 
   useEffect(() => {
     ipcRenderer.send(channels.TILES, { qupath: props.qupath, image: props.biopsyTif });
-    ipcRenderer.once(channels.TILES, (event, args) => {
+    ipcRenderer.on(channels.TILES, (event, args) => {
       if (args.error) {
         console.error(args.error);
         return;
       }
-      const { tiles } = args;
-      setGrid(buildTileGrids(tiles));
+      setGrid(updateTileGrid(gridRef.current, args.tiles));
     });
   }, []);
 
@@ -42,15 +45,15 @@ function Viewer(props) {
 
   function gridCoordToCell({ x, y }) {
     return {
-      row: Math.floor(y / tileWidth),
-      column: Math.floor(x / tileWidth)
+      row: Math.floor(y / tileSize.width),
+      column: Math.floor(x / tileSize.width)
     };
   }
 
   function gridCellToCoord({ row, column }) {
     return {
-      x: column * tileWidth,
-      y: row * tileWidth
+      x: column * tileSize.width,
+      y: row * tileSize.width
     };
   }
 
@@ -59,7 +62,7 @@ function Viewer(props) {
     imageLoaderRef.current.loadImage(src, (img) => {
 
       const { x, y } = gridToCanvas(gridCellToCoord({ row, column }));
-      const displayTileWidth = tileWidth * zoomAmt;
+      const displayTileWidth = tileSize.width * zoomAmt;
 
       if (x + displayTileWidth < 0 || y + displayTileWidth < 0
         || x > ctx.canvas.width || y > ctx.canvas.height) {
@@ -116,7 +119,7 @@ function Viewer(props) {
     if (e.deltaY < 0) {
       setZoomAmt(Math.min(zoomAmt / 0.9, 5));
     } else if (e.deltaY > 0) {
-      setZoomAmt(Math.max(zoomAmt * 0.9, 0.2));
+      setZoomAmt(Math.max(zoomAmt * 0.9, 0.1));
     }
   }
 

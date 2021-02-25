@@ -1,61 +1,73 @@
 
-// TODO: grid may not be full rectangle, just request nonexistent image?
-export const tileWidth = 512;
+import { tileSize } from './shared/constants';
 
+const tileRealWidth = tileSize.width * tileSize.downsampling;
 const tilePattern = /\[x=(\d+),y=(\d+),w=(\d+),h=(\d+)\](-labelled)?.png$/;
 
-export function buildTileGrids(allTiles) {
+// add *new* tiles to the grid(s)
+export function updateTileGrid(grid, newTiles) {
 
-  let minX = null, minY = null, maxX = null, maxY = null;
-  // assumes all same dimension
-  let srcW
-  const locatedTiles = allTiles.map(src => {
+  let maxRow = grid.height - 1;
+  let maxColumn = grid.width - 1;
+
+  const locatedTiles = newTiles.map(src => {
 
     const match = tilePattern.exec(decodeURI(src))
-    const x = parseInt(match[1])
-    const y = parseInt(match[2])
-    srcW = parseInt(match[3])
-    const isMask = match[5] != null
+    const x = parseInt(match[1]);
+    const y = parseInt(match[2]);
+    const w = parseInt(match[3]);
+    const h = parseInt(match[4]);
+    if (x % tileRealWidth != 0 || y % tileRealWidth != 0) {
+      console.error(`unexpected tile position: ${x} ${y}`);
+    }
+    if (w != tileRealWidth || h != tileRealWidth) {
+      console.error(`unexpected tile size: ${w} ${h}`);
+    }
+    
+    const isMask = match[5] != null;
+    
+    const row    = y / tileRealWidth;
+    const column = x / tileRealWidth
 
-    if (minX == null || x < minX) minX = x;
-    if (maxX == null || x > maxX) maxX = x;
-    if (minY == null || y < minY) minY = y;
-    if (maxY == null || y > maxY) maxY = y;
+    if (row > maxRow) maxRow = row;
+    if (column > maxColumn) maxColumn = column;
 
-    return [[x, y], isMask, src];
+    return [[row, column], isMask, src];
   })
 
-  const height = Math.round((maxY - minY) / srcW + 1)
-  const width = Math.round((maxX - minX) / srcW + 1)
-  // [row][column]
-  let biopsyTiles = [];
-  let maskTiles = [];
-
-  for (let tiles of [biopsyTiles, maskTiles]) {
-    for (let r = 0; r < height; r++) {
-      let row = []
-      for (let c = 0; c < width; c++) {
-        row.push(null);
-      }
-      tiles.push(row);
-    }
-  }
-
-  for (const [[x, y], isMask, src] of locatedTiles) {
-    const row = (y - minY) / srcW;
-    const column = (x - minX) / srcW;
-
-    if (isMask) {
-      maskTiles[row][column] = src
-    } else {
-      biopsyTiles[row][column] = src
-    }
-  }
-
-  return {
-    height,
-    width,
-    biopsyTiles,
-    maskTiles
+  let newGrid = {
+    biopsyTiles: [],
+    maskTiles: [],
+    height: maxRow + 1,
+    width: maxColumn + 1
   };
+
+  for (let tileType of ['biopsyTiles', 'maskTiles']) {
+    for (let r = 0; r < newGrid.height; r++) {
+      if (r < grid.height) { // copy & extend existing row
+        let row = grid[tileType][r].slice();
+        for (let c = grid.width; c < newGrid.width; c++) {
+          row.push(null);
+        }
+        newGrid[tileType].push(row);
+
+      }else { // add completely new row
+        let row = [];
+        for (let c = 0; c < newGrid.width; c++) {
+          row.push(null);
+        }
+        newGrid[tileType].push(row);
+      }
+    }
+  }
+
+  for (const [[row, column], isMask, src] of locatedTiles) {
+    if (isMask) {
+      newGrid.maskTiles[row][column] = src;
+    } else {
+      newGrid.biopsyTiles[row][column] = src;
+    }
+  }
+
+  return newGrid;
 }

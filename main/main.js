@@ -1,10 +1,10 @@
 const { app, BrowserWindow, ipcMain, protocol } = require('electron');
 const { execFile } = require('child_process');
-const fs = require('fs');
+const chokidar = require('chokidar');
 const path = require('path');
 const tmp = require('tmp');
 const url = require('url');
-const { channels } = require('../src/shared/constants');
+const { channels, tileSize } = require('../src/shared/constants');
 
 function isDev() {
   return process.env.ELECTRON_ENV == 'development';
@@ -28,6 +28,7 @@ const createWindow = () => {
   });
 
   mainWindow.loadURL(startURL);
+  mainWindow.maximize();
 };
 
 // https://github.com/electron/electron/issues/23757#issuecomment-640146333
@@ -112,40 +113,58 @@ ipcMain.on(channels.TILES, (event, args) => {
       event.sender.send(channels.TILES, {
         error: 'Unable to create directory: ' + error
       });
+      return;
     }
 
     const scriptPath = isDev() 
       ? './scripts/tiler.groovy' 
       : path.join(process.resourcesPath, "scripts/tiler.groovy");
   
-    const downsampling = 8;
-    const tileSize = 512;
-    const command = ['script', '--image', image, '--args', `${tileSize} ${downsampling} ${tileDir}`, scriptPath];
+    const command = [
+      'script', 
+      '--image', image, 
+      '--args', `${tileSize.width} ${tileSize.downsampling} ${tileDir}`, 
+      scriptPath
+    ];
   
+    const watcher = chokidar.watch(tileDir, {awaitWriteFinish: true});
+    
+    // full file paths of yet unsent tiles
+    let newTiles = [];
+    const batchSize = 50;
+
+    function sendTileBatch() {
+      event.sender.send(channels.TILES, {
+        tiles: newTiles.map(devFileProtocolURI),
+      });
+      newTiles = [];
+    }
+
+    watcher.on('add', tilePath => {
+      newTiles.push(tilePath);
+      if (newTiles.length >= batchSize) {
+        sendTileBatch();
+      }
+    });
+
     try {
+      // run script
       execFile(qupath, command, (error, stdout, stderr) => {
+        // script done
+
+        // TODO check stdout, stderr for non warnings
+
         if (error) {
           event.sender.send(channels.TILES, {error: 'QuPath script error: ' + error});
           return;
         }
-  
-        // TODO: qupath may silently generate zero tiles!
-        fs.readdir(tileDir, (error, files) => {
-          if (error) {
-            event.sender.send(channels.TILES, {error: 'Error reading produced tiles ' + error});
-            return;
-          }
-          
-          let fullPaths = files.map(name => devFileProtocolURI(path.join(tileDir, name)));
-          
-          // TODO: don't send all at once?
-          // https://www.npmjs.com/package/chokidar
-          event.sender.send(channels.TILES, {
-            tiles: fullPaths,
-            stdout,
-            stderr
+        // wait some time to be sure all tiles are seen
+        setTimeout(() => {
+          watcher.close().then(() => {
+            sendTileBatch();
+            console.log('sent last tiles');
           });
-        });
+        }, 200);
       });
   
     }catch (error) {
