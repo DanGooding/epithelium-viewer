@@ -19,8 +19,8 @@ const createWindow = () => {
     });
 
   const mainWindow = new BrowserWindow({
-    width: 1000,
-    height: 800,
+    width: 1500,
+    height: 1000,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       enableRemoteModule: true,
@@ -104,43 +104,54 @@ ipcMain.on(channels.QUPATH_CHECK, (event, args) => {
 
 // request for tiles
 ipcMain.on(channels.TILES, (event, args) => {
-
   const { qupath, image } = args;
 
-  // TODO: delete later?
-  const tileDir = tmp.dirSync(); // TODO: is sync okay?
+  // TODO: delete later
+  tmp.dir((error, tileDir, cleanup) => {
+    if (error) {
+      event.sender.send(channels.TILES, {
+        error: 'Unable to create directory: ' + error
+      });
+    }
 
-  const scriptPath = isDev() 
-    ? './scripts/tiler.groovy' 
-    : path.join(process.resourcesPath, "scripts/tiler.groovy");
-
-  const command = ['script', '--image', image, '--args', tileDir.name, scriptPath];
+    const scriptPath = isDev() 
+      ? './scripts/tiler.groovy' 
+      : path.join(process.resourcesPath, "scripts/tiler.groovy");
   
-  try {
-    execFile(qupath, command, (error, stdout, stderr) => {
-      if (!error) {
-        fs.readdir(tileDir.name, (err, files) => {
-          let fullPaths = files.map(name => devFileProtocolURI(path.join(tileDir.name, name)));
+    const downsampling = 8;
+    const tileSize = 512;
+    const command = ['script', '--image', image, '--args', `${tileSize} ${downsampling} ${tileDir}`, scriptPath];
+  
+    try {
+      execFile(qupath, command, (error, stdout, stderr) => {
+        if (error) {
+          event.sender.send(channels.TILES, {error: 'QuPath script error: ' + error});
+          return;
+        }
+  
+        // TODO: qupath may silently generate zero tiles!
+        fs.readdir(tileDir, (error, files) => {
+          if (error) {
+            event.sender.send(channels.TILES, {error: 'Error reading produced tiles ' + error});
+            return;
+          }
+          
+          let fullPaths = files.map(name => devFileProtocolURI(path.join(tileDir, name)));
           
           // TODO: don't send all at once?
+          // https://www.npmjs.com/package/chokidar
           event.sender.send(channels.TILES, {
             tiles: fullPaths,
             stdout,
             stderr
           });
         });
-        
-      } // TODO handle error!
-      else {
-        console.error(error)
-      }
-    });
-
-  }catch (error) {
-    // TODO respond with error
-    console.error(error);
-  }
+      });
   
+    }catch (error) {
+      event.sender.send(channels.TILES, {error: 'QuPath error: ' + error});
+    }
+  });
 });
 
 

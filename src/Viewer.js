@@ -14,23 +14,14 @@ function Viewer(props) {
   const [grid, setGrid] = useState({ biopsyTiles: [], maskTiles: [], width: 0, height: 0 });
 
   useEffect(() => {
-    // setGrid(buildTileGrids(['file:///home/dan/Documents/work/group-project/frontend/epithelium-viewer/public/images/5096%20HE.tif%20-%20Series%200/5096%20HE.tif%20-%20Series%200%20%5Bx=9216,y=4608,w=1536,h=1536%5D.png']));
-    // setGrid({
-    //   biopsyTiles: [['file:///home/dan/Documents/work/group-project/frontend/epithelium-viewer/public/images/5096%20HE.tif%20-%20Series%200/5096%20HE.tif%20-%20Series%200%20%5Bx=9216,y=4608,w=1536,h=1536%5D.png']],
-    //   maskTiles: [[null]],
-    //   width: 1, height: 1
-    // });
-    // setGrid(buildTileGrids(['/home/dan/Documents/work/group-project/frontend/epithelium-viewer/public/images/5096 HE.tif - Series 0/5096 HE.tif - Series 0 [x=10752,y=4608,w=1536,h=1536].png']));
-    // setGrid(buildTileGrids(['/images/5096 HE.tif - Series 0/5096 HE.tif - Series 0 [x=9216,y=4608,w=1536,h=1536].png']));
-    console.log('requesting tiles');
-
     ipcRenderer.send(channels.TILES, { qupath: props.qupath, image: props.biopsyTif });
-    ipcRenderer.once(channels.TILES, (event, { tiles, stdout, stderr }) => {
+    ipcRenderer.once(channels.TILES, (event, args) => {
+      if (args.error) {
+        console.error(args.error);
+        return;
+      }
+      const { tiles } = args;
       setGrid(buildTileGrids(tiles));
-      console.log('received tiles');
-      console.log(tiles);
-      console.log(stdout);
-      console.log(stderr);
     });
   }, []);
 

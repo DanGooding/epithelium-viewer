@@ -10,7 +10,7 @@ export function buildTileGrids(allTiles) {
   // assumes all same dimension
   let srcW
   const locatedTiles = allTiles.map(src => {
-    debugger
+
     const match = tilePattern.exec(decodeURI(src))
     const x = parseInt(match[1])
     const y = parseInt(match[2])
