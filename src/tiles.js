@@ -10,26 +10,27 @@ export function buildTileGrids(allTiles) {
   // assumes all same dimension
   let srcW
   const locatedTiles = allTiles.map(src => {
-    const match = tilePattern.exec(src)
+    debugger
+    const match = tilePattern.exec(decodeURI(src))
     const x = parseInt(match[1])
     const y = parseInt(match[2])
     srcW = parseInt(match[3])
     const isMask = match[5] != null
-    
+
     if (minX == null || x < minX) minX = x;
     if (maxX == null || x > maxX) maxX = x;
     if (minY == null || y < minY) minY = y;
     if (maxY == null || y > maxY) maxY = y;
-  
-    return [[x,y], isMask, src];
+
+    return [[x, y], isMask, src];
   })
-  
+
   const height = Math.round((maxY - minY) / srcW + 1)
   const width = Math.round((maxX - minX) / srcW + 1)
   // [row][column]
   let biopsyTiles = [];
   let maskTiles = [];
-  
+
   for (let tiles of [biopsyTiles, maskTiles]) {
     for (let r = 0; r < height; r++) {
       let row = []
@@ -39,14 +40,14 @@ export function buildTileGrids(allTiles) {
       tiles.push(row);
     }
   }
-  
-  for (const [[x,y], isMask, src] of locatedTiles) {
+
+  for (const [[x, y], isMask, src] of locatedTiles) {
     const row = (y - minY) / srcW;
     const column = (x - minX) / srcW;
-  
+
     if (isMask) {
       maskTiles[row][column] = src
-    }else {
+    } else {
       biopsyTiles[row][column] = src
     }
   }

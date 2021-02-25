@@ -11,25 +11,31 @@
     "react": "^17.0.1",
     "react-dom": "^17.0.1",
     "react-scripts": "4.0.2",
+    "tmp": "^0.2.1",
     "web-vitals": "^1.1.0"
   },
   "homepage": "./",
   "scripts": {
-    "start": "export BROWSER=none && react-scripts start",
+    "start-react": "export BROWSER=none && react-scripts start",
     "start-windows": "set BROWSER=none && react-scripts start",
-    "start-electron": "export ELECTRON_START_URL=http://localhost:3000 && electron .",
-    "start-electron-windows": "set ELECTRON_START_URL=http://localhost:3000 && electron .",
-    "build": "react-scripts build",
-    "build-electron": "mkdir .\\build\\src && robocopy main .\\build\\main /S",
-    "package": "electron-builder build --win -c.extraMetadata.main=build/main/main.js --publish never",
+    "start-electron": "export ELECTRON_START_URL=http://localhost:3000 ELECTRON_ENV=development && electron .",
+    "start-electron-windows": "set ELECTRON_START_URL=http://localhost:3000 ELECTRON_ENV=development && electron .",
+    "build-react": "react-scripts build",
+    "build-electron-windows": "mkdir .\\build\\src && robocopy main .\\build\\main /S",
+    "build-electron": "mkdir -p build/src && cp -r main/. build/main && cp -r src/shared/. build/src/shared",
+    "package": "electron-builder build --linux -c.extraMetadata.main=build/main/main.js --publish never",
+    "clean": "rm -rf build dist",
+    "clean-win": "rmdir build /S /Q & rmdir dist/S /Q",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
   "build": {
     "files": [
       "build/**/*",
-      "node_modules/**/*"
+      "node_modules/**/*",
+      "scripts/tiler.groovy"
     ],
+    "extraResources": "scripts",
     "publish": {
       "provider": "github",
       "repo": "_",

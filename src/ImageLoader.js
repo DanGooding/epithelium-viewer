@@ -10,8 +10,9 @@ class ImageLoader {
   loadImage(src, onload) {
     if (this.images.has(src)) {
       onload(this.images.get(src))
-    }else {
+    } else {
       let img = new Image()
+      img.onerror = e => console.error(e)
       this.images.set(src, img)
       img.onload = () => onload(this.images.get(src))
       img.src = src

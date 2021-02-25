@@ -1,5 +1,6 @@
 module.exports = {
   channels: {
-    TILES: 'tiles'
+    TILES: 'tiles',
+    QUPATH_CHECK: 'qupath-check'
   }
 };
