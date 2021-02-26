@@ -75,9 +75,28 @@ app.on('activate', () => {
 });
 
 let runningChildProcesses = new Map(); // pid: ChildProcess
+let createdTmpDirs = new Map(); // path: cleanup function
 
-app.on('before-quit', () => {
-  runningChildProcesses.forEach(process => process.kill());
+function cleanupAllTmp(callback) {
+  if (createdTmpDirs.size > 0) {
+    const path = createdTmpDirs.keys().next().value;
+    const cleanup = createdTmpDirs.get(path);
+    createdTmpDirs.delete(path);
+    cleanup(() => cleanupAllTmp(callback));
+  }else {
+    callback();
+  }
+}
+
+app.on('before-quit', event => {
+  if (createdTmpDirs.size > 0) {
+    event.preventDefault();
+    cleanupAllTmp(() => app.quit());
+  }else {
+    // don't kill unless we are actually about to quit
+    // else their completion callbacks will be called
+    runningChildProcesses.forEach(process => process.kill());
+  }
 });
 
 
@@ -124,14 +143,14 @@ ipcMain.on(channels.QUPATH_CHECK, (event, args) => {
 ipcMain.on(channels.TILES, (event, args) => {
   const { qupath, image } = args;
 
-  // TODO: delete later
-  tmp.dir((error, tileDir, cleanup) => {
+  tmp.dir({unsafeCleanup: true}, (error, tileDir, cleanup) => {
     if (error) {
       event.sender.send(channels.TILES, {
         error: 'Unable to create directory: ' + error
       });
       return;
     }
+    createdTmpDirs.set(tileDir, cleanup);
 
     const scriptPath = isDev() 
       ? './scripts/tiler.groovy' 
