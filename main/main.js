@@ -189,12 +189,12 @@ ipcMain.on(channels.TILES, (event, args) => {
           event.sender.send(channels.TILES, {error: 'QuPath script error: ' + error});
           return;
         }
-        // wait some time to be sure all tiles are seen
+        // wait some time to be sure all changes are seen
         setTimeout(() => {
           watcher.close().then(() => {
             sendTileBatch();
           });
-        }, 200);
+        }, 3000);
       });
     }catch (error) {
       event.sender.send(channels.TILES, {error: 'QuPath error: ' + error});
