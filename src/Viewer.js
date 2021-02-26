@@ -118,9 +118,10 @@ function Viewer(props) {
 
   function handleMouseMove(e) { // pan
     if (e.buttons != 0) { // if dragging
+      const maxPos = gridToBiopsy({row: grid.height, column: grid.width});
       setCameraPos({
-        x: cameraPos.x - e.movementX * tileSize.downsampling / zoomAmt,
-        y: cameraPos.y - e.movementY * tileSize.downsampling / zoomAmt
+        x: Math.max(0, Math.min(maxPos.x, cameraPos.x - e.movementX * tileSize.downsampling / zoomAmt)),
+        y: Math.max(0, Math.min(maxPos.y, cameraPos.y - e.movementY * tileSize.downsampling / zoomAmt))
       });
     }
   }
