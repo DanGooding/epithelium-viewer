@@ -3,11 +3,19 @@ const LRUCache = require('lru-cache');
 class ImageLoader {
 
   constructor() {
-    // Map<src, Image>
+    // Map<src, {image: Image, loaded: bool}>
     this.images = new LRUCache({
-      max: 200 // TODO calibrate
+      max: 400 // TODO calibrate
     });
     // TODO: use image dimensions/size
+  }
+
+  getImage(src) {
+    if (!this.images.has(src)) {
+      return null;
+    }
+    const { image, loaded } = this.images.get(src);
+    return loaded ? image : null;
   }
 
   loadImage(src, onload) {
@@ -16,13 +24,18 @@ class ImageLoader {
     }
 
     if (this.images.has(src)) {
-      onload(this.images.get(src))
+      if (onload != null) onload(this.images.get(src));
+
     } else {
-      let img = new Image()
-      img.onerror = e => console.error(e)
-      this.images.set(src, img)
-      img.onload = () => onload(this.images.get(src));
-      img.src = src
+      let image = new Image();
+      image.onerror = error => console.error(error);
+      const entry = {image, loaded: false};
+      this.images.set(src, entry);
+      image.onload = () => {
+        entry.loaded = true;
+        if (onload != null) onload(image);
+      };
+      image.src = src;
     }
   }
 }

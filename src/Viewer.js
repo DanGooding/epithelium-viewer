@@ -58,25 +58,28 @@ function Viewer(props) {
     };
   }
 
-  function drawTile(ctx, src, row, column, setStyle, defaultColor = null) {
-    if (src == null && defaultColor == null) return;
-    imageLoaderRef.current.loadImage(src, img => {
-      if (img == null) return;
-      
-      // TODO: another case of callback capturing old value
-      const { x, y } = biopsyToCanvas(gridToBiopsy({ row, column }));
-      const displayTileWidth = tileSize.width * zoomAmt;
+  function drawTile(ctx, src, row, column, setStyle, defaultColor=null) {
+    const image = imageLoaderRef.current.getImage(src);
+    if (image == null && defaultColor == null) return;
 
-      if (x + displayTileWidth < 0 || y + displayTileWidth < 0
-        || x > ctx.canvas.width || y > ctx.canvas.height) {
-        return;
-      }
+    const { x, y } = biopsyToCanvas(gridToBiopsy({ row, column }));
+    const displayTileWidth = tileSize.width * zoomAmt;
 
-      ctx.save()
+    if (x + displayTileWidth < 0 || y + displayTileWidth < 0
+      || x > ctx.canvas.width || y > ctx.canvas.height) {
+      return;
+    }
+
+    ctx.save();
+    if (image == null) {
+      ctx.fillStyle = defaultColor;
+      ctx.fillRect(x, y, displayTileWidth, displayTileWidth);
+    }else {
       if (setStyle != null) setStyle();
-      ctx.drawImage(img, x, y, displayTileWidth, displayTileWidth);
-      ctx.restore()
-    })
+      ctx.drawImage(image, x, y, displayTileWidth, displayTileWidth);
+    }   
+    ctx.restore();
+    
   }
 
 
@@ -96,6 +99,14 @@ function Viewer(props) {
 
     for (let row = minCell.row; row <= maxCell.row; row++) {
       for (let column = minCell.column; column <= maxCell.column; column++) {
+        // TODO restructure this
+
+        // images in view should be loaded, draw them if they are already.
+
+
+        // TODO redraw upon load
+        imageLoaderRef.current.loadImage(grid.biopsyTiles[row][column]);
+        imageLoaderRef.current.loadImage(grid.maskTiles[row][column]);
         drawTile(ctx, grid.biopsyTiles[row][column], row, column, null, 'black');
         drawTile(ctx, grid.maskTiles[row][column], row, column, () => {
           ctx.globalAlpha = highlightAmt;
