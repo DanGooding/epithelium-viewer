@@ -1,6 +1,7 @@
 import Viewer from './Viewer'
 import { useState } from 'react';
 import { channels } from './shared/constants';
+import './App.css';
 const { remote, ipcRenderer } = window.electron;
 
 function App() {
