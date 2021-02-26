@@ -103,9 +103,9 @@ app.on('before-quit', event => {
 // TODO: a general version for any subprocess
 // execute a qupath command, throwing an error when it fails to spawn
 function runQupath(qupathPath, command, callback) {
-  const qupathProcess = execFile(qupathPath, command, result => {
+  const qupathProcess = execFile(qupathPath, command, (error, stdout, stderr) => {
     runningChildProcesses.delete(qupathProcess.pid);
-    callback(result);
+    callback(error, stdout, stderr);
   });
   runningChildProcesses.set(qupathProcess.pid, qupathProcess);
 }
@@ -121,7 +121,6 @@ ipcMain.on(channels.QUPATH_CHECK, (event, args) => {
         });
       
       }else {
-
         // TODO: ensure have string not buffer
         const match = /QuPath v(\d+.\d+.\d+)/i.exec(stdout);
         const version = match[1];
