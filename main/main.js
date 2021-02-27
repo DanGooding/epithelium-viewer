@@ -1,5 +1,5 @@
 const { app, BrowserWindow, ipcMain, protocol } = require('electron');
-const { execFile } = require('child_process');
+const { exec, execFile, spawn } = require('child_process');
 const chokidar = require('chokidar');
 const path = require('path');
 const tmp = require('tmp');
@@ -77,6 +77,37 @@ app.on('activate', () => {
 let runningChildProcesses = new Map(); // pid: ChildProcess
 let createdTmpDirs = new Map(); // path: cleanup function
 
+function managedExecFile(path, args, callback) {
+  const managedProcess = execFile(path, args, (error, stdout, stderr) => {
+    runningChildProcesses.delete(managedProcess.pid);
+    callback(error, stdout, stderr);
+  });
+  runningChildProcesses.set(managedProcess.pid, managedProcess);
+  return managedProcess;
+}
+
+function managedSpawn(command, args, options) {
+  const spawnedProcess = spawn(command, args, options);
+  runningChildProcesses.set(spawnedProcess.pid, spawnedProcess);
+  // TODO: are additional listeners guaranteed not to replace this one
+  spawnedProcess.on('close', () => {
+    runningChildProcesses.delete(spawnedProcess.pid);
+  });
+  return spawnedProcess;
+}
+
+function makeTmpDir(callback) {
+  tmp.dir({unsafeCleanup: true}, (error, dirPath, cleanup) => {
+    if (error) { // if this fails, something is badly wrong
+      console.error('failed to create tmp directory:', error);
+      app.quit();
+      return;
+    }
+    createdTmpDirs.set(dirPath, cleanup);
+    callback(dirPath);
+  });
+}
+
 function cleanupAllTmp(callback) {
   if (createdTmpDirs.size > 0) {
     const path = createdTmpDirs.keys().next().value;
@@ -99,27 +130,23 @@ app.on('before-quit', event => {
   }
 });
 
-
-// TODO: a general version for any subprocess
-// execute a qupath command, throwing an error when it fails to spawn
-function runQupath(qupathPath, command, callback) {
-  const qupathProcess = execFile(qupathPath, command, (error, stdout, stderr) => {
-    runningChildProcesses.delete(qupathProcess.pid);
-    callback(error, stdout, stderr);
-  });
-  runningChildProcesses.set(qupathProcess.pid, qupathProcess);
+function getResourcePath(resource) {
+  if (isDev()) {
+    return resource;
+  }else {
+    return path.join(process.resourcesPath, resource)
+  }
 }
+
 
 ipcMain.on(channels.QUPATH_CHECK, (event, args) => {
   const qupathPath = args.path;
   try {
-    runQupath(qupathPath, ['--version'], (error, stdout, stderr) => {
-
+    managedExecFile(qupathPath, ['--version'], (error, stdout, stderr) => {
       if (error) {
         event.sender.send(channels.QUPATH_CHECK, {
           success: false
         });
-      
       }else {
         // TODO: ensure have string not buffer
         const match = /QuPath v(\d+.\d+.\d+)/i.exec(stdout);
@@ -131,74 +158,114 @@ ipcMain.on(channels.QUPATH_CHECK, (event, args) => {
         });
       }
     });
-  }catch (e) {
+  }catch (error) {
     event.sender.send(channels.QUPATH_CHECK, {
       success: false
     });
   }
 });
 
-// request for tiles
-ipcMain.on(channels.TILES, (event, args) => {
-  const { qupath, image } = args;
+// wrap a function, so calls are delayed and sent in batches
+function batchify(batchSize, maxWait, target) {
+  let bufferedItems = [];
+  let timeout = null;
 
-  tmp.dir({unsafeCleanup: true}, (error, tileDir, cleanup) => {
-    if (error) {
-      event.sender.send(channels.TILES, {
-        error: 'Unable to create directory: ' + error
-      });
-      return;
+  function send() {
+    if (bufferedItems.length > 0) {
+      const readyItems = bufferedItems;
+      bufferedItems = [];
+      target(readyItems);
     }
-    createdTmpDirs.set(tileDir, cleanup);
+    if (timeout != null) {
+      clearTimeout(timeout);
+      timeout = null;
+    }
+  }
 
-    const scriptPath = isDev() 
-      ? './scripts/tiler.groovy' 
-      : path.join(process.resourcesPath, "scripts/tiler.groovy");
-  
+  return arg => {
+    bufferedItems.push(arg);
+    if (timeout == null) {
+      timeout = setTimeout(send, maxWait);
+    }
+    if (bufferedItems.length >= batchSize) {
+      send();
+    }
+  }
+}
+
+function generateTiles(qupathPath, image, listeningWebContents) {
+  makeTmpDir(tileDir => {
     const command = [
       'script', 
       '--image', image, 
       '--args', `${tileSize.width} ${tileSize.downsampling} ${tileDir}`, 
-      scriptPath
+      getResourcePath('scripts/tiler.groovy')
     ];
   
     const watcher = chokidar.watch(tileDir, {awaitWriteFinish: true});
     
-    // full file paths of yet unsent tiles
-    let newTiles = [];
-    const batchSize = 50;
-
-    function sendTileBatch() {
-      event.sender.send(channels.TILES, {
-        tiles: newTiles.map(devFileProtocolURI),
+    watcher.on('add', batchify(50, 1000, newTilePaths => {
+      listeningWebContents.send(channels.TILES, {
+        tiles: newTilePaths.map(devFileProtocolURI),
       });
-      newTiles = [];
-    }
-
-    watcher.on('add', tilePath => {
-      newTiles.push(tilePath);
-      if (newTiles.length >= batchSize) {
-        sendTileBatch();
-      }
-    });
+    }));
 
     try {
-      runQupath(qupath, command, (error, stdout, stderr) => {
+      managedExecFile(qupathPath, command, (error, stdout, stderr) => {
         // TODO check stdout, stderr for non warnings
         if (error) {
-          event.sender.send(channels.TILES, {error: 'QuPath script error: ' + error});
+          listeningWebContents.send(channels.TILES, {error: 'QuPath script error: ' + error});
           return;
         }
         // wait some time to be sure all changes are seen
         setTimeout(() => {
           watcher.close().then(() => {
-            sendTileBatch();
+            // not doing this in parallel with tile generation since both need a lot of compute
+            generateMasks(tileDir, listeningWebContents);
           });
         }, 3000);
       });
+
     }catch (error) {
-      event.sender.send(channels.TILES, {error: 'QuPath error: ' + error});
+      listeningWebContents.send(channels.TILES, {error: 'QuPath error: ' + error});
     }
   });
+}
+
+// request for tiles
+ipcMain.on(channels.TILES, (event, { qupath, image }) => {
+  generateTiles(qupath, image, event.sender);
 });
+
+function getSystemPython() {
+  return process.platform === 'win32' ? 'py' : 'python3';
+}
+
+function generateMasks(tileDir, listeningWebContents) {
+  makeTmpDir(maskDir => {
+
+    const watcher = chokidar.watch(maskDir, {awaitWriteFinish: true});
+    watcher.on('add', batchify(50, 1000, maskPaths => {
+      listeningWebContents.send(channels.TILE_MASKS, {
+        tiles: maskPaths.map(devFileProtocolURI)
+      });
+    }));
+
+    try {
+      const pythonProcess = managedSpawn(getSystemPython(), [getResourcePath('scripts/segmenter.py'), tileDir, maskDir]);
+      pythonProcess.on('close', code => {
+        if (code != 0) {
+          listeningWebContents.send(channels.TILE_MASKS, {error: 'python script error'});
+          return;
+        }
+        setTimeout(() => {
+          watcher.close();
+        }, 3000);
+      });
+      
+    }catch (error) {
+      listeningWebContents.send(channels.TILE_MASKS, {error: 'python error: ' + error});
+    }
+  });
+}
 

@@ -25,8 +25,15 @@ function Viewer(props) {
         console.error(args.error);
         return;
       }
-      setGrid(updateTileGrid(gridRef.current, args.tiles));
+      setGrid(updateTileGrid(gridRef.current, args.tiles, false));
     });
+    ipcRenderer.on(channels.TILE_MASKS, (event, args) => {
+      if (args.error) {
+        console.error(args.error);
+        return;
+      }
+      setGrid(updateTileGrid(gridRef.current, args.tiles, true));
+    })
   }, []);
 
   // TODO: track zooming to mouse

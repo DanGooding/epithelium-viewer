@@ -7,8 +7,9 @@ tileSize.realWidth = tileSize.width * tileSize.downsampling;
 
 module.exports = {
   channels: {
+    QUPATH_CHECK: 'qupath-check',
     TILES: 'tiles',
-    QUPATH_CHECK: 'qupath-check'
+    TILE_MASKS: 'tile-masks'
   },
   tileSize
 };
