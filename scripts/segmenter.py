@@ -14,10 +14,11 @@ if len(sys.argv) != 3:
     print('wrong number of arguments', file=sys.stderr)
     exit(1)
 
+script_path = sys.argv[0]
 tile_dir = sys.argv[1]
 mask_dir = sys.argv[2]
 
-sample_mask_path = '/home/dan/Documents/work/group-project/frontend/epithelium-viewer/scripts/dots.png'
+sample_mask_path = os.path.join(os.path.split(script_path)[0], 'dots.png')
 
 for tile_name in os.listdir(tile_dir):
     shutil.copyfile(sample_mask_path, os.path.join(mask_dir, tile_name))
