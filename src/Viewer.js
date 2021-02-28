@@ -3,7 +3,7 @@ import { updateTileGrid } from './tiles'
 import './Viewer.css'
 import ImageLoader from './ImageLoader'
 import { channels, tileSize } from './shared/constants';
-const { ipcRenderer } = window;
+const { ipc } = window;
 
 function Viewer(props) {
   const canvasRef = useRef(null);
@@ -19,15 +19,15 @@ function Viewer(props) {
   gridRef.current = grid;
 
   useEffect(() => {
-    ipcRenderer.send(channels.TILES, { qupath: props.qupath, image: props.biopsyTif });
-    ipcRenderer.on(channels.TILES, (event, args) => {
+    ipc.send(channels.TILES, { qupath: props.qupath, image: props.biopsyTif });
+    ipc.on(channels.TILES, args => {
       if (args.error) {
         console.error(args.error);
         return;
       }
       setGrid(updateTileGrid(gridRef.current, args.tiles, false));
     });
-    ipcRenderer.on(channels.TILE_MASKS, (event, args) => {
+    ipc.on(channels.TILE_MASKS, args => {
       if (args.error) {
         console.error(args.error);
         return;

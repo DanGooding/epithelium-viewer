@@ -51,7 +51,8 @@ function main() {
     width: 1500,
     height: 1000,
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js')
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true
     }
   });
 
