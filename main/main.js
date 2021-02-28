@@ -5,16 +5,15 @@ const path = require('path');
 const tmp = require('tmp');
 const url = require('url');
 const { channels, tileSize } = require('../src/shared/constants');
+const { batchify } = require('./utils');
 
-function isDev() {
-  return process.env.ELECTRON_ENV == 'development';
-}
+const isDev = process.env.ELECTRON_ENV === 'development';
 
 // https://github.com/electron/electron/issues/23757#issuecomment-640146333
 // in development use http server - so chromium disallows local file access unless we do this
 const devFileProtocolName = 'safe-file-protocol';
 function devFileProtocolURI(path) {
-  if (isDev()) {
+  if (isDev) {
     return `${devFileProtocolName}:///${path}`;
   }else {
     return path;
@@ -22,15 +21,15 @@ function devFileProtocolURI(path) {
 }
 
 function getResourcePath(resource) {
-  if (isDev()) {
+  if (isDev) {
     return resource;
   }else {
     return path.join(process.resourcesPath, resource)
   }
 }
 
-app.on('ready', async () => {
-  if (isDev()) {
+function main() {
+  if (isDev) {
     protocol.registerFileProtocol(devFileProtocolName, (request, callback) => {
       const pathname = request.url.replace(`${devFileProtocolName}:///`, '');
       try {
@@ -41,10 +40,6 @@ app.on('ready', async () => {
     });
   }
 
-  createWindow();
-});
-
-const createWindow = () => {
   const startURL = process.env.ELECTRON_START_URL || 
     url.format({
       pathname: path.join(__dirname, '../index.html'),
@@ -52,7 +47,7 @@ const createWindow = () => {
       slashes: 'true'
     });
 
-  const mainWindow = new BrowserWindow({
+  const window = new BrowserWindow({
     width: 1500,
     height: 1000,
     webPreferences: {
@@ -61,9 +56,11 @@ const createWindow = () => {
     }
   });
 
-  mainWindow.loadURL(startURL);
-  mainWindow.maximize();
-};
+  window.loadURL(startURL);
+  window.maximize();
+}
+
+app.on('ready', main);
 
 // Quit when all windows are closed, except on macOS. There, it's common
 // for applications and their menu bar to stay active until the user quits
@@ -78,7 +75,7 @@ app.on('activate', () => {
   // On OS X it's common to re-create a window in the app when the
   // dock icon is clicked and there are no other windows open.
   if (BrowserWindow.getAllWindows().length === 0) {
-    createWindow();
+    main();
   }
 });
 
@@ -163,34 +160,6 @@ ipcMain.on(channels.QUPATH_CHECK, (event, args) => {
     });
   }
 });
-
-// wrap a function, so calls are delayed and sent in batches
-function batchify(batchSize, maxWait, target) {
-  let bufferedItems = [];
-  let timeout = null;
-
-  function send() {
-    if (bufferedItems.length > 0) {
-      const readyItems = bufferedItems;
-      bufferedItems = [];
-      target(readyItems);
-    }
-    if (timeout != null) {
-      clearTimeout(timeout);
-      timeout = null;
-    }
-  }
-
-  return arg => {
-    bufferedItems.push(arg);
-    if (timeout == null) {
-      timeout = setTimeout(send, maxWait);
-    }
-    if (bufferedItems.length >= batchSize) {
-      send();
-    }
-  }
-}
 
 function generateTiles(qupathPath, image, listeningWebContents) {
   makeTmpDir(tileDir => {
