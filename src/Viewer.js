@@ -3,7 +3,7 @@ import { updateTileGrid } from './tiles'
 import './Viewer.css'
 import ImageLoader from './ImageLoader'
 import { channels, tileSize } from './shared/constants';
-const { ipcRenderer } = window.electron;
+const { ipcRenderer } = window;
 
 function Viewer(props) {
   const canvasRef = useRef(null);

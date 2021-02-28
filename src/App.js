@@ -1,43 +1,34 @@
 import Viewer from './Viewer'
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { channels } from './shared/constants';
 import './App.css';
-const { remote, ipcRenderer } = window.electron;
+const { ipcRenderer } = window;
 
 function App() {
   const [qupath, setQupath] = useState(null);
   const [biopsyTif, setBiopsyTif] = useState(null);
 
-  function findQupath() {
-    remote.dialog.showOpenDialog({
-      properties: ['openFile'],
-      title: 'Locate QuPath executable',
-      buttonLabel: 'Select'
-    }).then(selection => {
-      if (!selection.canceled) {
-        const path = selection.filePaths[0];
-        ipcRenderer.send(channels.QUPATH_CHECK, {path});
-        ipcRenderer.once(channels.QUPATH_CHECK, (event, args) => {
-          if (args.success) {
-            setQupath({path, version: args.version});
-          }
-        });
+  useEffect(() => {
+    ipcRenderer.on(channels.FIND_QUPATH, (event, args) => {
+      if (args.success) {
+        setQupath(args.qupath);
       }
-    })
+    });
+
+    ipcRenderer.once(channels.OPEN_IMAGE, (event, args) => {
+      if (args.path) {
+        setBiopsyTif(args.path);
+      }
+    });
+  }, []);
+
+  function findQupath() {
+    ipcRenderer.send(channels.FIND_QUPATH);
   }
 
   function selectBiopsyTif() {
-    remote.dialog.showOpenDialog({
-      properties: ['openFile'],
-      filters: [
-        { name: "Images", extensions: ['tif', 'bif'] }
-      ]
-    }).then(selection => {
-      if (!selection.canceled) {
-        const path = selection.filePaths[0];
-        setBiopsyTif(path);
-      }
-    })
+    // TODO: don't open multiple dialogs on double click
+    ipcRenderer.send(channels.OPEN_IMAGE);
   }
 
   if (qupath == null) {

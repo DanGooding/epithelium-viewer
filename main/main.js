@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, protocol } = require('electron');
+const { app, BrowserWindow, ipcMain, protocol, dialog } = require('electron');
 const { execFile, spawn } = require('child_process');
 const chokidar = require('chokidar');
 const path = require('path');
@@ -51,8 +51,7 @@ function main() {
     width: 1500,
     height: 1000,
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
-      enableRemoteModule: true,
+      preload: path.join(__dirname, 'preload.js')
     }
   });
 
@@ -135,30 +134,55 @@ app.on('before-quit', event => {
   }
 });
 
-ipcMain.on(channels.QUPATH_CHECK, (event, args) => {
-  const qupathPath = args.path;
+ipcMain.on(channels.FIND_QUPATH, (event, args) => {
+  dialog.showOpenDialog({
+    properties: ['openFile'],
+    title: 'Locate QuPath executable',
+    buttonLabel: 'Select'
+  }).then(selection => {
+    if (!selection.canceled) {
+      const path = selection.filePaths[0];
+      testQupathPath(path, result => {
+        event.sender.send(channels.FIND_QUPATH, result);
+      });
+    }
+  })
+});
+
+function testQupathPath(qupathPath, callback) {
   try {
     managedExecFile(qupathPath, ['--version'], (error, stdout, stderr) => {
       if (error) {
-        event.sender.send(channels.QUPATH_CHECK, {
-          success: false
-        });
+        callback({success: false});
       }else {
-        // TODO: ensure have string not buffer
         const match = /QuPath v(\d+.\d+.\d+)/i.exec(stdout);
         const version = match[1];
-
-        event.sender.send(channels.QUPATH_CHECK, {
+        callback({
           success: true,
-          version
+          qupath: {
+            path: qupathPath,
+            version
+          }
         });
       }
     });
   }catch (error) {
-    event.sender.send(channels.QUPATH_CHECK, {
-      success: false
-    });
+    callback({success: false});
   }
+}
+
+ipcMain.on(channels.OPEN_IMAGE, event => {
+  dialog.showOpenDialog({
+    properties: ['openFile'],
+    filters: [
+      { name: "Images", extensions: ['tif', 'bif'] }
+    ]
+  }).then(selection => {
+    if (!selection.canceled) {
+      const path = selection.filePaths[0];
+      event.sender.send(channels.OPEN_IMAGE, { path });
+    }
+  });
 });
 
 function generateTiles(qupathPath, image, listeningWebContents) {
