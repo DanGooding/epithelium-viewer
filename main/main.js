@@ -28,6 +28,10 @@ function getResourcePath(resource) {
   }
 }
 
+let appState = {
+  qupathPath: null
+};
+
 function main() {
   if (isDev) {
     protocol.registerFileProtocol(devFileProtocolName, (request, callback) => {
@@ -136,18 +140,33 @@ app.on('before-quit', event => {
 });
 
 ipcMain.on(channels.FIND_QUPATH, (event, args) => {
-  dialog.showOpenDialog({
-    properties: ['openFile'],
-    title: 'Locate QuPath executable',
-    buttonLabel: 'Select'
-  }).then(selection => {
-    if (!selection.canceled) {
-      const path = selection.filePaths[0];
-      testQupathPath(path, result => {
-        event.sender.send(channels.FIND_QUPATH, result);
-      });
-    }
-  })
+  if (args.select) {
+    dialog.showOpenDialog({
+      properties: ['openFile'],
+      title: 'Locate QuPath executable',
+      buttonLabel: 'Select'
+    }).then(selection => {
+      if (!selection.canceled) {
+        const path = selection.filePaths[0];
+        testQupathPath(path, result => {
+          if (result.success) {
+            appState.qupathPath = path;
+            event.sender.send(channels.FIND_QUPATH, {version: result.version});
+          }else {
+            event.sender.send(channels.FIND_QUPATH, {error: 'selected file is not a QuPath executable'});
+          }
+        });
+      }
+    });
+  }else if (appState.qupathPath != null) {
+    testQupathPath(path, result => {
+      if (result.success) {
+        event.sender.send(channels.FIND_QUPATH, {version: result.version});
+      }else {
+        appState.qupathPath = null;
+      }
+    });
+  }
 });
 
 function testQupathPath(qupathPath, callback) {
@@ -160,10 +179,7 @@ function testQupathPath(qupathPath, callback) {
         const version = match[1];
         callback({
           success: true,
-          qupath: {
-            path: qupathPath,
-            version
-          }
+          version
         });
       }
     });
@@ -186,7 +202,7 @@ ipcMain.on(channels.OPEN_IMAGE, event => {
   });
 });
 
-function generateTiles(qupathPath, image, listeningWebContents) {
+function generateTiles(image, listeningWebContents) {
   makeTmpDir(tileDir => {
     const command = [
       'script', 
@@ -204,7 +220,7 @@ function generateTiles(qupathPath, image, listeningWebContents) {
     }));
 
     try {
-      managedExecFile(qupathPath, command, (error, stdout, stderr) => {
+      managedExecFile(appState.qupathPath, command, (error, stdout, stderr) => {
         // TODO check stdout, stderr for non warnings
         if (error) {
           listeningWebContents.send(channels.TILES, {error: 'QuPath script error: ' + error});
@@ -226,8 +242,8 @@ function generateTiles(qupathPath, image, listeningWebContents) {
 }
 
 // request for tiles
-ipcMain.on(channels.TILES, (event, { qupath, image }) => {
-  generateTiles(qupath, image, event.sender);
+ipcMain.on(channels.TILES, (event, { image }) => {
+  generateTiles(image, event.sender);
 });
 
 function getSystemPython() {

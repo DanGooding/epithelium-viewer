@@ -19,7 +19,7 @@ function Viewer(props) {
   gridRef.current = grid;
 
   useEffect(() => {
-    ipc.send(channels.TILES, { qupath: props.qupath, image: props.biopsyTif });
+    ipc.send(channels.TILES, { image: props.biopsyTif });
     ipc.on(channels.TILES, args => {
       if (args.error) {
         console.error(args.error);
