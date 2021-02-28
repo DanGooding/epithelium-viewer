@@ -1,5 +1,5 @@
 const { app, BrowserWindow, ipcMain, protocol } = require('electron');
-const { exec, execFile, spawn } = require('child_process');
+const { execFile, spawn } = require('child_process');
 const chokidar = require('chokidar');
 const path = require('path');
 const tmp = require('tmp');
@@ -9,6 +9,40 @@ const { channels, tileSize } = require('../src/shared/constants');
 function isDev() {
   return process.env.ELECTRON_ENV == 'development';
 }
+
+// https://github.com/electron/electron/issues/23757#issuecomment-640146333
+// in development use http server - so chromium disallows local file access unless we do this
+const devFileProtocolName = 'safe-file-protocol';
+function devFileProtocolURI(path) {
+  if (isDev()) {
+    return `${devFileProtocolName}:///${path}`;
+  }else {
+    return path;
+  }
+}
+
+function getResourcePath(resource) {
+  if (isDev()) {
+    return resource;
+  }else {
+    return path.join(process.resourcesPath, resource)
+  }
+}
+
+app.on('ready', async () => {
+  if (isDev()) {
+    protocol.registerFileProtocol(devFileProtocolName, (request, callback) => {
+      const pathname = request.url.replace(`${devFileProtocolName}:///`, '');
+      try {
+        return callback(decodeURIComponent(pathname));
+      }catch (error) {
+        console.error(error)
+      }
+    });
+  }
+
+  createWindow();
+});
 
 const createWindow = () => {
   const startURL = process.env.ELECTRON_START_URL || 
@@ -30,32 +64,6 @@ const createWindow = () => {
   mainWindow.loadURL(startURL);
   mainWindow.maximize();
 };
-
-// https://github.com/electron/electron/issues/23757#issuecomment-640146333
-// in development use http server - so chromium disallows local file access unless we do this
-const devFileProtocolName = 'safe-file-protocol';
-function devFileProtocolURI(path) {
-  if (isDev()) {
-    return `${devFileProtocolName}:///${path}`;
-  }else {
-    return path;
-  }
-}
-
-app.on('ready', async () => {
-  if (isDev) {
-    protocol.registerFileProtocol(devFileProtocolName, (request, callback) => {
-      const pathname = request.url.replace(`${devFileProtocolName}:///`, '');
-      try {
-        return callback(decodeURIComponent(pathname));
-      }catch (error) {
-        console.error(error)
-      }
-    });
-  }
-
-  createWindow();
-});
 
 // Quit when all windows are closed, except on macOS. There, it's common
 // for applications and their menu bar to stay active until the user quits
@@ -129,15 +137,6 @@ app.on('before-quit', event => {
     runningChildProcesses.forEach(process => process.kill());
   }
 });
-
-function getResourcePath(resource) {
-  if (isDev()) {
-    return resource;
-  }else {
-    return path.join(process.resourcesPath, resource)
-  }
-}
-
 
 ipcMain.on(channels.QUPATH_CHECK, (event, args) => {
   const qupathPath = args.path;
