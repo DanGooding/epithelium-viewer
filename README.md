@@ -9,6 +9,12 @@ Built with Electron and React.js.
 - The 'frontend', electron's render process (which runs in a chromium window), is in `src/` and `public/`, and uses react for the UI.
 
 
+## setting up
+requires node.js installed, then to install the reuired packages, run
+```
+npm install
+```
+
 ## running the app
 Most scripts have windows specific versions, suffixed `-windows`
 
