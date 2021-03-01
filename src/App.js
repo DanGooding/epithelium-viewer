@@ -5,25 +5,30 @@ import './App.css';
 const { ipc } = window;
 
 function App() {
-  const [qupath, setQupath] = useState(null);
+  const [qupath, setQupath] = useState({version: null, selectionError: null});
   const [biopsyTif, setBiopsyTif] = useState(null);
 
   useEffect(() => {
+    ipc.send(channels.FIND_QUPATH, {select: false}); // poll the current qupath
+
     ipc.on(channels.FIND_QUPATH, args => {
-      if (args.success) {
-        setQupath(args.qupath);
+      if (args.error) {
+        setQupath({selectionError: args.error})
+      }else {
+        setQupath({version: args.version, selectionError: null});
       }
     });
 
-    ipc.once(channels.OPEN_IMAGE, args => {
+    ipc.on(channels.OPEN_IMAGE, args => {
       if (args.path) {
         setBiopsyTif(args.path);
       }
     });
   }, []);
 
-  function findQupath() {
-    ipc.send(channels.FIND_QUPATH);
+  function selectQupath() {
+    setQupath({selectionError: null});
+    ipc.send(channels.FIND_QUPATH, {select: true});
   }
 
   function selectBiopsyTif() {
@@ -31,10 +36,11 @@ function App() {
     ipc.send(channels.OPEN_IMAGE);
   }
 
-  if (qupath == null) {
+  if (qupath.version == null) {
     return (
       <div>
-        <button onClick={findQupath}>Select QuPath executable</button>
+        <button onClick={selectQupath}>Select QuPath executable</button>
+        {qupath.selectionError && <span>Error: {qupath.selectionError}</span>}
       </div>
     );
 
@@ -50,7 +56,7 @@ function App() {
   return (
     <div>
       Image {biopsyTif}
-      <Viewer width={1000} height={800} biopsyTif={biopsyTif} qupath={qupath.path}/>
+      <Viewer width={1000} height={800} biopsyTif={biopsyTif}/>
     </div>
   );
 }
