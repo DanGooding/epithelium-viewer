@@ -5,15 +5,16 @@ Built for the Part Ib Cambridge Computer Science Group Project, by team 'Mike's
 ## Technologies
 Built with Electron and React.js.
 
-- The 'backend' is electron's main process (which runs nodejs), is in `main/`, which handles interfacing with QuPath to generate tiles. and python for the neural network.
+- The 'backend' is electron's main process (which runs nodejs), which is in `main/`, which handles interfacing with QuPath to generate tiles. and python for the neural network.
 - The 'frontend', electron's render process (which runs in a chromium window), is in `src/` and `public/`, and uses react for the UI.
 
 
 ## setting up
-requires node.js installed, then to install the reuired packages, run
+Requires node.js installed, then to install the required packages, run
 ```
 npm install
 ```
+also needs [QuPath](https://qupath.github.io/)
 
 ## running the app
 Most scripts have windows specific versions, suffixed `-windows`
