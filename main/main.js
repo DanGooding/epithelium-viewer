@@ -159,7 +159,7 @@ ipcMain.on(channels.FIND_QUPATH, (event, args) => {
       }
     });
   }else if (appState.qupathPath != null) {
-    testQupathPath(path, result => {
+    testQupathPath(appState.qupathPath, result => {
       if (result.success) {
         event.sender.send(channels.FIND_QUPATH, {version: result.version});
       }else {
