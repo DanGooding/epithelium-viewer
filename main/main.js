@@ -221,8 +221,10 @@ function generateTiles(image, listeningWebContents) {
 
     try {
       managedExecFile(appState.qupathPath, command, (error, stdout, stderr) => {
-        // TODO check stdout, stderr for non warnings
-        if (error) {
+        if (error || stderr.length != 0) {
+          if (!error) {
+            error = stderr;
+          }
           listeningWebContents.send(channels.TILES, {error: 'QuPath script error: ' + error});
           return;
         }
