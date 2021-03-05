@@ -207,10 +207,10 @@ function generateTiles(image, listeningWebContents) {
     const command = [
       'script', 
       '--image', image, 
-      '--args', `${tileSize.width} ${tileSize.downsampling} ${tileDir}`, 
       getResourcePath('scripts/tiler.groovy')
     ];
-  
+    const args = [tileSize.width, tileSize.downsampling, tileDir];
+
     const watcher = chokidar.watch(tileDir, {awaitWriteFinish: true});
     
     watcher.on('add', batchify(50, 1000, newTilePaths => {
@@ -220,7 +220,7 @@ function generateTiles(image, listeningWebContents) {
     }));
 
     try {
-      managedExecFile(appState.qupathPath, command, (error, stdout, stderr) => {
+      const qupathProcess = managedExecFile(appState.qupathPath, command, (error, stdout, stderr) => {
         if (error || stderr.length != 0) {
           if (!error) {
             error = stderr;
@@ -236,6 +236,10 @@ function generateTiles(image, listeningWebContents) {
           });
         }, 3000);
       });
+
+      for (const arg of args) {
+        qupathProcess.stdin.write(`${arg}\n`);
+      }
 
     }catch (error) {
       listeningWebContents.send(channels.TILES, {error: 'QuPath error: ' + error});

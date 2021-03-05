@@ -4,9 +4,11 @@
 
 // args: [tile size] [downsampling] [output folder path]
 
-def tileSize = args[0] as int
-def downsampling = args[1] as int
-def outputPath = args[2]
+def stdinReader = System.in.newReader()
+
+def tileSize = stdinReader.readLine() as int
+def downsampling = stdinReader.readLine() as int
+def outputPath = stdinReader.readLine()
 
 def imageData = getCurrentImageData()
 
