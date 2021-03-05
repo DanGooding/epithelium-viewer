@@ -27,7 +27,7 @@ function App() {
   }, []);
 
   function selectQupath() {
-    setQupath({selectionError: null});
+    setQupath({version: qupath.version, selectionError: null});
     ipc.send(channels.FIND_QUPATH, {select: true});
   }
 
@@ -47,7 +47,8 @@ function App() {
   }else if (biopsyTif == null) {
     return (
       <div>
-        Using Qupath {qupath.version}
+        Using Qupath {qupath.version} 
+        <button onClick={selectQupath}>Change</button>
         <button onClick={selectBiopsyTif}>Open a Biopsy</button>
       </div>
     )

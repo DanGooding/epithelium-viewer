@@ -2,9 +2,10 @@ const { app, BrowserWindow, ipcMain, protocol, dialog } = require('electron');
 const { execFile, spawn } = require('child_process');
 const chokidar = require('chokidar');
 const path = require('path');
+const Store = require('electron-store');
 const tmp = require('tmp');
 const url = require('url');
-const { channels, tileSize } = require('../src/shared/constants');
+const { channels, tileSize, settingsStoreKeys } = require('../src/shared/constants');
 const { batchify } = require('./utils');
 
 const isDev = process.env.ELECTRON_ENV === 'development';
@@ -28,9 +29,7 @@ function getResourcePath(resource) {
   }
 }
 
-let appState = {
-  qupathPath: null
-};
+const settingsStore = new Store();
 
 function main() {
   if (isDev) {
@@ -147,10 +146,10 @@ ipcMain.on(channels.FIND_QUPATH, (event, args) => {
       buttonLabel: 'Select'
     }).then(selection => {
       if (!selection.canceled) {
-        const path = selection.filePaths[0];
-        testQupathPath(path, result => {
+        const candidateQupathPath = selection.filePaths[0];
+        testQupathPath(candidateQupathPath, result => {
           if (result.success) {
-            appState.qupathPath = path;
+            settingsStore.set(settingsStoreKeys.QUPATH_PATH, candidateQupathPath);
             event.sender.send(channels.FIND_QUPATH, {version: result.version});
           }else {
             event.sender.send(channels.FIND_QUPATH, {error: 'selected file is not a QuPath executable'});
@@ -158,8 +157,8 @@ ipcMain.on(channels.FIND_QUPATH, (event, args) => {
         });
       }
     });
-  }else if (appState.qupathPath != null) {
-    testQupathPath(appState.qupathPath, result => {
+  }else if (settingsStore.get(settingsStoreKeys.QUPATH_PATH) != null) {
+    testQupathPath(settingsStore.get(settingsStoreKeys.QUPATH_PATH), result => {
       if (result.success) {
         event.sender.send(channels.FIND_QUPATH, {version: result.version});
       }else {
@@ -204,6 +203,7 @@ ipcMain.on(channels.OPEN_IMAGE, event => {
 
 function generateTiles(image, listeningWebContents) {
   makeTmpDir(tileDir => {
+    const qupathPath = settingsStore.get(settingsStoreKeys.QUPATH_PATH);
     const command = [
       'script', 
       '--image', image, 
@@ -220,7 +220,7 @@ function generateTiles(image, listeningWebContents) {
     }));
 
     try {
-      const qupathProcess = managedExecFile(appState.qupathPath, command, (error, stdout, stderr) => {
+      const qupathProcess = managedExecFile(qupathPath, command, (error, stdout, stderr) => {
         if (error || stderr.length != 0) {
           if (!error) {
             error = stderr;

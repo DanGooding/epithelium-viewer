@@ -23,5 +23,8 @@ module.exports = {
     // main -> ({tiles})
     TILE_MASKS: 'tile-masks'
   },
-  tileSize
+  tileSize,
+  settingsStoreKeys: {
+    QUPATH_PATH: 'qupath-path'
+  }
 };
