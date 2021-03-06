@@ -1,4 +1,7 @@
 
+const maskDownsamplings = [8];
+const biopsyDownsamplings = [...maskDownsamplings, 16];
+
 module.exports = {
   channels: {
     // render -> ({select: bool}) -> main
@@ -22,8 +25,8 @@ module.exports = {
   tileSize: {
     // actual width of the (square) image files
     width: 512,
-    maskDownsamplings: [6, 16],
-    biopsyDownsamplings: [6, 16]
+    maskDownsamplings,
+    biopsyDownsamplings
   },
   settingsStoreKeys: {
     QUPATH_PATH: 'qupath-path'

@@ -37,7 +37,6 @@ function Viewer(props) {
 
   useEffect(draw);
 
-  // TODO draw when tiles arrive
   function draw() {
     gridRef.current.draw(canvasRef.current.getContext('2d'), cameraPos, zoomAmt, highlightAmt);
   }

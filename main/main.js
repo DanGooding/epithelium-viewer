@@ -116,6 +116,19 @@ function makeTmpDir(callback) {
   });
 }
 
+function makeTmpDirs(n, callback) {
+  if (n <= 0) {
+    callback([]);
+  }else {
+    makeTmpDirs(n - 1, tmpDirs => {
+      makeTmpDir(tmpDir => {
+        tmpDirs.push(tmpDir);
+        callback(tmpDirs);
+      });
+    });
+  }
+}
+
 function cleanupAllTmp(callback) {
   if (createdTmpDirs.size > 0) {
     const path = createdTmpDirs.keys().next().value;
@@ -202,7 +215,8 @@ ipcMain.on(channels.OPEN_IMAGE, event => {
 });
 
 function generateTiles(image, listeningWebContents) {
-  makeTmpDir(tileDir => {
+  // all tiles are for viewing, some are segmented to produce masks too
+  makeTmpDirs(2, ([viewOnlyTileDir, viewAndMaskTileDir]) => {
     const qupathPath = settingsStore.get(settingsStoreKeys.QUPATH_PATH);
     const command = [
       'script', 
@@ -210,10 +224,27 @@ function generateTiles(image, listeningWebContents) {
       getResourcePath('scripts/tiler.groovy')
     ];
 
-    const args = [tileSize.width, tileDir, tileSize.biopsyDownsamplings.length, ...tileSize.biopsyDownsamplings];
+    // generate most downsampled first
+    const downsamplingLevels = tileSize.biopsyDownsamplings.slice().sort((a,b) => b - a);
 
-    const watcher = chokidar.watch(tileDir, {awaitWriteFinish: true});
+    // each downsampling level and the folder to save those tiles to
+    const downsamplingArgs = downsamplingLevels.map(downsampling => {
+      if (tileSize.maskDownsamplings.includes(downsampling)) {
+        return [viewAndMaskTileDir, downsampling];
+      }else {
+        return [viewOnlyTileDir, downsampling];
+      }
+    });
     
+    const args = [
+      tileSize.width, 
+      // number of downsamplings
+      downsamplingArgs.length, 
+      // path, downsampling, path, downsampling, ...
+      ...downsamplingArgs.flat()];
+
+    const watcher = chokidar.watch([viewOnlyTileDir, viewAndMaskTileDir], {awaitWriteFinish: true});
+
     watcher.on('add', batchify(50, 1000, newTilePaths => {
       listeningWebContents.send(channels.TILES, {
         tiles: newTilePaths.map(devFileProtocolURI),
@@ -233,7 +264,7 @@ function generateTiles(image, listeningWebContents) {
         setTimeout(() => {
           watcher.close().then(() => {
             // not doing this in parallel with tile generation since both need a lot of compute
-            generateMasks(tileDir, listeningWebContents);
+            generateMasks(viewAndMaskTileDir, listeningWebContents);
           });
         }, 3000);
       });

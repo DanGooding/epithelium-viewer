@@ -1,24 +1,25 @@
 
 // invocation
-//  qupath script --image [image] tiler.groovy
+//   qupath script --image [image] tiler.groovy
 // args via stdin (newline separated):
-//  [tile size]
-//  [output folder path]
-//  [number of downsampling levels]
-//  [downsampling amount 1]
-//  [downsampling amount 2]
-//  ...
+//   [tile size]
+//   [N]
+//   [output folder path 1]
+//   [downsampling amount 1]
+//   ...
+//   [output folder path N]
+//   [downsampling amount N]
 
 def stdinReader = System.in.newReader()
 int tileSize = stdinReader.readLine() as int
-String outputPath = stdinReader.readLine()
 int numDownsamplings = stdinReader.readLine() as int
 
 def imageData = getCurrentImageData()
 
 for (int i = 0; i < numDownsamplings; i++) {
+    String outputPath = stdinReader.readLine()
     int downsampling = stdinReader.readLine() as int
-    
+
     new TileExporter(imageData)
         .downsample(downsampling)
         .imageExtension('.png')
