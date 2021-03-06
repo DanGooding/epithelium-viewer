@@ -1,20 +1,28 @@
 
 // invocation
-// qupath script --image [image], --args [arguments as a single string] tiler.groovy
-
-// args: [tile size] [downsampling] [output folder path]
+//  qupath script --image [image] tiler.groovy
+// args via stdin (newline separated):
+//  [tile size]
+//  [output folder path]
+//  [number of downsampling levels]
+//  [downsampling amount 1]
+//  [downsampling amount 2]
+//  ...
 
 def stdinReader = System.in.newReader()
-
-def tileSize = stdinReader.readLine() as int
-def downsampling = stdinReader.readLine() as int
-def outputPath = stdinReader.readLine()
+int tileSize = stdinReader.readLine() as int
+String outputPath = stdinReader.readLine()
+int numDownsamplings = stdinReader.readLine() as int
 
 def imageData = getCurrentImageData()
 
-new TileExporter(imageData)
-    .downsample(downsampling)     // Define export resolution
-    .imageExtension('.png')     // Define file extension for original pixels (often .tif, .jpg, '.png' or '.ome.tif')
-    .tileSize(tileSize)         // Define size of each tile, in pixels
-    .overlap(0)                 // Define overlap, in pixel units at the export resolution
-    .writeTiles(outputPath)     // Write tiles to the specified directory
+for (int i = 0; i < numDownsamplings; i++) {
+    int downsampling = stdinReader.readLine() as int
+    
+    new TileExporter(imageData)
+        .downsample(downsampling)
+        .imageExtension('.png')
+        .tileSize(tileSize)
+        .overlap(0)
+        .writeTiles(outputPath)
+}

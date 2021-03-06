@@ -1,29 +1,30 @@
 
-let tileSize = {
-  width: 512,
-  downsampling: 8
-};
-tileSize.realWidth = tileSize.width * tileSize.downsampling;
-
 module.exports = {
   channels: {
-    // ({select}) -> main
-    // main -> ({version})
-    // main -> ({error})
+    // render -> ({select: bool}) -> main
+    // main -> ({version}) -> render
+    // main -> ({error}) -> render
     FIND_QUPATH: 'find-qupath',
 
-    // () -> main
-    // main -> ({path})
+    // render -> () -> main
+    // main -> ({path}) -> render
     OPEN_IMAGE: 'open-image',
 
-    // ({image}) -> main
-    // main -> ({tiles})
+    // render -> ({image}) -> main
+    // main -> ({tiles: [string]}) -> render
+    // main -> ({error}) -> render
     TILES: 'tiles',
 
-    // main -> ({tiles})
+    // main -> ({tiles: [string]}) -> render
+    // main -> ({error}) -> render
     TILE_MASKS: 'tile-masks'
   },
-  tileSize,
+  tileSize: {
+    // actual width of the (square) image files
+    width: 512,
+    maskDownsamplings: [6, 16],
+    biopsyDownsamplings: [6, 16]
+  },
   settingsStoreKeys: {
     QUPATH_PATH: 'qupath-path'
   }

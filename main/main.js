@@ -209,7 +209,8 @@ function generateTiles(image, listeningWebContents) {
       '--image', image, 
       getResourcePath('scripts/tiler.groovy')
     ];
-    const args = [tileSize.width, tileSize.downsampling, tileDir];
+
+    const args = [tileSize.width, tileDir, tileSize.biopsyDownsamplings.length, ...tileSize.biopsyDownsamplings];
 
     const watcher = chokidar.watch(tileDir, {awaitWriteFinish: true});
     

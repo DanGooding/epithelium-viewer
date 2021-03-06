@@ -1,39 +1,38 @@
 
 import { tileSize } from './shared/constants';
 
-const tilePattern = /\[x=(\d+),y=(\d+),w=(\d+),h=(\d+)\].png$/;
+const tileNamePattern = /\[x=(\d+),y=(\d+),w=(\d+),h=(\d+)\].png$/;
 
-function locateTiles(tiles) {
-  let maxRow = 0, maxColumn = 0;
+export function locateTiles(tiles, possibleDownsamplings) {
+  return tiles.map(src => {
 
-  const locatedTiles = tiles.map(src => {
-
-    const match = tilePattern.exec(decodeURI(src));
+    const match = tileNamePattern.exec(decodeURI(src));
     if (match == null) {
       console.error(`invalid tile path: ${src}`)
     }
     const [x, y, w, h] = match.slice(1, 5).map(n => parseInt(n));
-
-    if (x % tileSize.realWidth != 0 || y % tileSize.realWidth != 0) {
+    if (w != h) {
+      console.error(`non square tile: ${w} x ${h}`);
+    }
+    if (w % tileSize.width != 0) {
+      console.error(`unexpected tile size: ${w}`);
+    }
+    const downsampling = w / tileSize.width;
+    if (!possibleDownsamplings.includes(downsampling)) {
+      console.error(`unexpected tile downsampling: ${downsampling}`);
+    }
+    if (x % w != 0 || y % w != 0) {
       console.error(`unexpected tile position: ${x} ${y}`);
     }
-    if (w != tileSize.realWidth || h != tileSize.realWidth) {
-      console.error(`unexpected tile size: ${w} ${h}`);
-    }
-    
-    const row    = y / tileSize.realWidth;
-    const column = x / tileSize.realWidth;
 
-    maxRow = Math.max(maxRow, row);
-    maxColumn = Math.max(maxColumn, column);
+    const row    = y / w;
+    const column = x / w;
 
-    return {row, column, src};
+    return {row, column, downsampling, src};
   });
-
-  return {locatedTiles, maxRow, maxColumn};
 }
 
-function shallowCopy2dArray(arr) {
+export function shallowCopy2dArray(arr) {
   let newArr = [];
   for (const row of arr) {
     newArr.push(row.slice());
@@ -41,7 +40,8 @@ function shallowCopy2dArray(arr) {
   return newArr;
 }
 
-function expand2dArray(arr, newHeight, newWidth) {
+// make a 2d array larger by adding nulls
+export function expand2dArray(arr, newHeight, newWidth) {
   for (let r = 0; r < newHeight; r++) {
     if (r >= arr.length) {
       arr.push([]);
@@ -53,23 +53,45 @@ function expand2dArray(arr, newHeight, newWidth) {
   }
 }
 
-// add *new* tiles to the grid(s)
-export function updateTileGrid(grid, newTiles, areMasks) {
-  const { locatedTiles, maxRow, maxColumn } = locateTiles(newTiles);
+// 3 coordinate systems:
+// - biopsy: [x,y] pixels in the source TIF
+// - canvas: [x,y] pixels in the canvas
+// - cell: [row,column] in a particular grid layer
 
-  let newGrid = {
-    height: Math.max(grid.height, maxRow + 1),
-    width: Math.max(grid.width, maxColumn + 1),
-    biopsyTiles: shallowCopy2dArray(grid.biopsyTiles),
-    maskTiles: shallowCopy2dArray(grid.maskTiles)
-  };
+export function biopsyToCanvas(x, y, cameraPos, zoomAmt, canvasSize) {
+  return [
+    (x - cameraPos.x) * zoomAmt + canvasSize.width / 2,
+    (y - cameraPos.y) * zoomAmt + canvasSize.height / 2
+  ];
+}
 
-  expand2dArray(newGrid.biopsyTiles, newGrid.height, newGrid.width);
-  expand2dArray(newGrid.maskTiles, newGrid.height, newGrid.width);
+export function canvasToBiopsy(x, y, cameraPos, zoomAmt, canvasSize) {
+  return [
+    (x - canvasSize.width  / 2) / zoomAmt + cameraPos.x,
+    (y - canvasSize.height / 2) / zoomAmt + cameraPos.y
+  ];
+}
 
-  for (const {row, column, src} of locatedTiles) {
-    (areMasks ? newGrid.maskTiles : newGrid.biopsyTiles)[row][column] = src;
-  }
+export function biopsyToCell(x, y, downsampling) {
+  return [
+    Math.floor(y / (tileSize.width * downsampling)),
+    Math.floor(x / (tileSize.width * downsampling))
+  ];
+}
 
-  return newGrid;
+export function cellToBiopsy(row, column, downsampling) {
+  return [
+    column * tileSize.width * downsampling,
+    row    * tileSize.width * downsampling
+  ];
+}
+
+export function canvasToCell(x, y, cameraPos, zoomAmt, canvasSize, downsampling) {
+  const [biopsyX, biopsyY] = canvasToBiopsy(x, y, cameraPos, zoomAmt, canvasSize);
+  return biopsyToCell(biopsyX, biopsyY, downsampling);
+}
+
+export function cellToCanvas(row, column, cameraPos, zoomAmt, canvasSize, downsampling) {
+  const [biopsyX, biopsyY] = cellToBiopsy(row, column, downsampling);
+  return biopsyToCanvas(biopsyX, biopsyY, cameraPos, zoomAmt, canvasSize);
 }

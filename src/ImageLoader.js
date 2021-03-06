@@ -10,7 +10,7 @@ class ImageLoader {
     // TODO: use image dimensions/size
   }
 
-  getImage(src) {
+  get(src) {
     if (!this.images.has(src)) {
       return null;
     }
@@ -18,7 +18,7 @@ class ImageLoader {
     return loaded ? image : null;
   }
 
-  loadImage(src, onload) {
+  load(src, onload) {
     if (src == null) {
       return;
     }
