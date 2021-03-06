@@ -1,7 +1,10 @@
 
+// the original data is: 512px @ 3x downsampling
+// this is reduced to: {128px @ 12x} for training
+// so anything of the form {128*N px @ 3*N} can be used here
 let tileSize = {
-  width: 512,
-  downsampling: 8
+  width: 256,
+  downsampling: 6
 };
 tileSize.realWidth = tileSize.width * tileSize.downsampling;
 

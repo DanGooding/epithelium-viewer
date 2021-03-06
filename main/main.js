@@ -7,6 +7,7 @@ const tmp = require('tmp');
 const url = require('url');
 const { channels, tileSize, settingsStoreKeys } = require('../src/shared/constants');
 const { batchify } = require('./utils');
+require('dotenv').config();
 
 const isDev = process.env.ELECTRON_ENV === 'development';
 
@@ -252,8 +253,8 @@ ipcMain.on(channels.TILES, (event, { image }) => {
   generateTiles(image, event.sender);
 });
 
-function getSystemPython() {
-  return process.platform === 'win32' ? 'py' : 'python3';
+function getPython() {
+  return process.env.PYTHON || (process.platform === 'win32' ? 'py' : 'python3');
 }
 
 function generateMasks(tileDir, listeningWebContents) {
@@ -267,7 +268,14 @@ function generateMasks(tileDir, listeningWebContents) {
     }));
 
     try {
-      const pythonProcess = managedSpawn(getSystemPython(), [getResourcePath('scripts/segmenter.py'), tileDir, maskDir]);
+      const args = [
+        getResourcePath('scripts/segmenter.py'), 
+        getResourcePath(`scripts/model/`),
+        tileDir, 
+        maskDir
+      ];
+
+      const pythonProcess = managedSpawn(getPython(), args);
       pythonProcess.on('close', code => {
         if (code != 0) {
           listeningWebContents.send(channels.TILE_MASKS, {error: 'python script error'});

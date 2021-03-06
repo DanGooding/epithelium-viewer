@@ -117,7 +117,7 @@ function Viewer(props) {
         drawTile(ctx, grid.biopsyTiles[row][column], row, column, null, 'black');
         drawTile(ctx, grid.maskTiles[row][column], row, column, () => {
           ctx.globalAlpha = highlightAmt;
-          ctx.globalCompositeOperation = 'screen'
+          ctx.globalCompositeOperation = 'multiply'
         });
       }
     }
