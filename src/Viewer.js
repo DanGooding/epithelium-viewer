@@ -1,14 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
 import './Viewer.css'
 import ImageLoader from './ImageLoader'
-import { channels } from './shared/constants';
 import { Grid } from './grid';
+import { useWindowSize } from './windowSize';
+import { channels } from './shared/constants';
 const { ipc } = window;
 
 function Viewer(props) {
   const canvasRef = useRef(null);
-  const imageLoaderRef = useRef(new ImageLoader(400));
+  const imageLoaderRef = useRef(new ImageLoader());
   const gridRef = useRef(new Grid(imageLoaderRef.current));
+  const [windowWidth, windowHeight] = useWindowSize();
   // camera lives in 'biopsy' coordinate space
   const [cameraPos, setCameraPos] = useState({ x: 0, y: 0 });
   const [zoomAmt, setZoomAmt] = useState(0.1);
@@ -17,6 +19,7 @@ function Viewer(props) {
   useEffect(() => {
     ipc.send(channels.TILES, { image: props.biopsyTif });
     ipc.on(channels.TILES, args => {
+      console.log(args);
       if (args.error) {
         console.error(args.error);
         return;
@@ -66,30 +69,32 @@ function Viewer(props) {
       <div>
         <canvas
           ref={canvasRef}
-          width={props.width}
-          height={props.height}
+          width={windowWidth}
+          height={windowHeight}
           onMouseMove={handleMouseMove}
           onWheel={handleWheel}
         />
       </div>
-      <label>Highlight
-        <input
-          type="range"
-          min="0"
-          max="1"
-          step="0.01"
-          value={highlightAmt}
-          onChange={e => setHighlightAmt(e.target.value)}
-        />
-      </label>
-      <span>{Math.round(cameraPos.x)}, {Math.round(cameraPos.y)} px</span>
-      <br/>
-      <span>{gridRef.current.getBounds().join(' x ')} px</span>
-      <br/>
-      <span>Zoom: {zoomAmt}</span>
-      <br/>
-      <span> Cache: {imageLoaderRef.current.images.length}</span>
-      <br/>
+      <div id="hud">
+        <span>{props.biopsyTif}</span>
+        <br/>
+        <label>Highlight
+          <input
+            type="range"
+            min="0"
+            max="1"
+            step="0.01"
+            value={highlightAmt}
+            onChange={e => setHighlightAmt(e.target.value)}
+          />
+        </label>
+        <br/>
+        <span>{Math.round(cameraPos.x)}, {Math.round(cameraPos.y)} px</span>
+        <br/>
+        <span>{gridRef.current.getBounds().join(' x ')} px</span>
+        <br/>
+        <span> Cache: {imageLoaderRef.current.images.length}</span>
+      </div>
     </div>
   )
 }

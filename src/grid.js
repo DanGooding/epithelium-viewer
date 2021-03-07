@@ -29,7 +29,7 @@ export class Grid {
     this.biopsyLayer.draw(ctx, cameraPos, zoomAmt, null, 'black');
     this.maskLayer.draw(ctx, cameraPos, zoomAmt, () => {
       ctx.globalAlpha = highlightAmt;
-      ctx.globalCompositeOperation = 'screen';
+      ctx.globalCompositeOperation = 'multiply';
     }, null);
   }
 

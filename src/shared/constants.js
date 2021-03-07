@@ -1,5 +1,9 @@
 
-const maskDownsamplings = [8];
+// the original data is: 512px @ 3x downsampling
+// this is reduced to: {128px @ 12x} for training
+// so anything of the form {128*N px @ 3*N} can be used here
+const tileWidth = 256;
+const maskDownsamplings = [6];
 const biopsyDownsamplings = [...maskDownsamplings, 16];
 
 module.exports = {
@@ -24,7 +28,7 @@ module.exports = {
   },
   tileSize: {
     // actual width of the (square) image files
-    width: 512,
+    width: tileWidth,
     maskDownsamplings,
     biopsyDownsamplings
   },
