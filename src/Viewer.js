@@ -2,11 +2,13 @@ import { useEffect, useRef, useState } from 'react';
 import { updateTileGrid } from './tiles'
 import './Viewer.css'
 import ImageLoader from './ImageLoader'
+import { useWindowSize } from './windowSize';
 import { channels, tileSize } from './shared/constants';
 const { ipc } = window;
 
 function Viewer(props) {
   const canvasRef = useRef(null);
+  const [windowWidth, windowHeight] = useWindowSize();
   const imageLoaderRef = useRef(new ImageLoader())
   // camera lives in 'biopsy' coordinate space
   const [cameraPos, setCameraPos] = useState({ x: 0, y: 0 });
@@ -21,6 +23,7 @@ function Viewer(props) {
   useEffect(() => {
     ipc.send(channels.TILES, { image: props.biopsyTif });
     ipc.on(channels.TILES, args => {
+      console.log(args);
       if (args.error) {
         console.error(args.error);
         return;
@@ -39,15 +42,15 @@ function Viewer(props) {
   // TODO: track zooming to mouse
   function biopsyToCanvas({ x, y }) {
     return {
-      x: (x - cameraPos.x) * zoomAmt / tileSize.downsampling + props.width / 2,
-      y: (y - cameraPos.y) * zoomAmt / tileSize.downsampling + props.height / 2
+      x: (x - cameraPos.x) * zoomAmt / tileSize.downsampling + windowWidth / 2,
+      y: (y - cameraPos.y) * zoomAmt / tileSize.downsampling + windowHeight / 2
     };
   }
 
   function canvasToBiopsy({ x, y }) {
     return {
-      x: (x - props.width  / 2) * tileSize.downsampling / zoomAmt + cameraPos.x,
-      y: (y - props.height / 2) * tileSize.downsampling / zoomAmt + cameraPos.y
+      x: (x - windowWidth  / 2) * tileSize.downsampling / zoomAmt + cameraPos.x,
+      y: (y - windowHeight / 2) * tileSize.downsampling / zoomAmt + cameraPos.y
     };
   }
 
@@ -146,24 +149,28 @@ function Viewer(props) {
       <div>
         <canvas
           ref={canvasRef}
-          width={props.width}
-          height={props.height}
+          width={windowWidth}
+          height={windowHeight}
           onMouseMove={handleMouseMove}
           onWheel={handleWheel}
         />
       </div>
-      <label>Highlight
-        <input
-          type="range"
-          min="0"
-          max="1"
-          step="0.01"
-          value={highlightAmt}
-          onChange={e => setHighlightAmt(e.target.value)}
-        />
-      </label>
-      <span>{Math.round(cameraPos.x)}, {Math.round(cameraPos.y)} px</span>
-      <span> Cache: {imageLoaderRef.current.images.length}</span>
+      <div id="hud">
+        <span>{props.biopsyTif}</span>
+        <br/>
+        <label>Highlight
+          <input
+            type="range"
+            min="0"
+            max="1"
+            step="0.01"
+            value={highlightAmt}
+            onChange={e => setHighlightAmt(e.target.value)}
+          />
+        </label>
+        <span>{Math.round(cameraPos.x)}, {Math.round(cameraPos.y)} px</span>
+        <span> Cache: {imageLoaderRef.current.images.length}</span>
+      </div>
     </div>
   )
 }

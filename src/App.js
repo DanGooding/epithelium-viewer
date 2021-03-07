@@ -56,8 +56,7 @@ function App() {
 
   return (
     <div>
-      Image {biopsyTif}
-      <Viewer width={1000} height={800} biopsyTif={biopsyTif}/>
+      <Viewer biopsyTif={biopsyTif}/>
     </div>
   );
 }
