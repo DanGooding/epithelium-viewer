@@ -1,4 +1,4 @@
-const { useState, useEffect } = require("react");
+import { useState, useEffect } from 'react';
 
 function getWindowSize() {
   const {innerWidth, innerHeight} = window;
@@ -21,4 +21,11 @@ export function useWindowSize() {
   });
 
   return windowSize;
+}
+
+export function withWindowSize(Component) {
+  return (props) => {
+    const [width, height] = useWindowSize();
+    return <Component windowWidth={width} windowHeight={height} {...props} />;
+  }
 }
