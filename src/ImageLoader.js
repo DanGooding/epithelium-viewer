@@ -2,10 +2,10 @@ const LRUCache = require('lru-cache');
 
 class ImageLoader {
 
-  constructor() {
+  constructor(cacheSize) {
     // Map<src, {image: Image, loaded: bool}>
     this.images = new LRUCache({
-      max: 400 // TODO calibrate
+      max: cacheSize // TODO calibrate
     });
     // TODO: use image dimensions/size
   }

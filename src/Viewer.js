@@ -4,6 +4,7 @@ import ImageLoader from './ImageLoader'
 import { Grid } from './grid';
 import { withWindowSize } from './windowSize';
 import { channels } from './shared/constants';
+import { canvasDeltaToBiopsy } from './tiles';
 const { ipc } = window;
 
 
@@ -11,7 +12,7 @@ class Viewer extends React.Component {
   constructor(props) {
     super(props);
     this.canvasRef = React.createRef();
-    this.imageLoader = new ImageLoader();
+    this.imageLoader = new ImageLoader(400);
     this.grid = new Grid(this.imageLoader);
 
     this.state = {
@@ -76,12 +77,13 @@ class Viewer extends React.Component {
   handleMouseMove(e) { // pan
     if (e.buttons != 0) { // if dragging
       const [maxX, maxY] = this.grid.getBounds();
-      // TODO: use canvasToBiopsy to do conversion
+      const [dx, dy] = canvasDeltaToBiopsy(-e.movementX, -e.movementY, this.state.camera);
+
       this.setState({
         camera: {
           ...this.state.camera,
-          x: Math.max(0, Math.min(maxX, this.state.camera.x - e.movementX / this.state.camera.zoom)),
-          y: Math.max(0, Math.min(maxY, this.state.camera.y - e.movementY / this.state.camera.zoom))
+          x: Math.max(0, Math.min(maxX, this.state.camera.x + dx)),
+          y: Math.max(0, Math.min(maxY, this.state.camera.y + dy))
         }
       });
     }

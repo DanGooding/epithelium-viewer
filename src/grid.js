@@ -1,6 +1,14 @@
 
 import { tileSize } from './shared/constants';
-import { locateTiles, expand2dArray, canvasToCell, cellToCanvas, cellToBiopsy } from './tiles';
+import { 
+  locateTiles, 
+  expand2dArray, 
+  cellToCanvas, 
+  cellToBiopsy, 
+  biopsyToCell, 
+  canvasDeltaToBiopsy, 
+  canvasToBiopsy 
+} from './tiles';
 
 export class Grid {
   constructor(imageLoader) {
@@ -115,24 +123,29 @@ class GridLayer {
     }
   }
 
-  draw(ctx, camera, setStyle, previewColor) {
-    const canvasSize = {width: ctx.canvas.width, height: ctx.canvas.height};
-    
+  findCellsInArea([x, y, w, h]) {
     // determine which cells are visible
-    let [minRow, minColumn] = 
-      canvasToCell(
-        0, 0, 
-        camera, canvasSize, this.downsampling);
+    let [minRow, minColumn] = biopsyToCell(x, y, this.downsampling);
     minRow    = Math.max(minRow, 0);
     minColumn = Math.max(minColumn, 0);
 
-    let [maxRow, maxColumn] = 
-      canvasToCell(
-        canvasSize.width, canvasSize.height, 
-        camera, canvasSize, this.downsampling);
+    let [maxRow, maxColumn] = biopsyToCell(x + w, y + h, this.downsampling);
     maxRow    = Math.min(maxRow,    this.numRows - 1);
     maxColumn = Math.min(maxColumn, this.numColumns - 1);
 
+    return [[minRow, minColumn], [maxRow, maxColumn]];
+  }
+
+  draw(ctx, camera, setStyle, previewColor) {
+    const canvasSize = {width: ctx.canvas.width, height: ctx.canvas.height};
+    
+    const viewArea = [
+      ...canvasToBiopsy(0, 0, camera, canvasSize),
+      ...canvasDeltaToBiopsy(canvasSize.width, canvasSize.height, camera)
+    ];
+
+    const [[minRow, minColumn], [maxRow, maxColumn]] = this.findCellsInArea(viewArea, camera);
+    
     for (let row = minRow; row <= maxRow; row++) {
       for (let column = minColumn; column <= maxColumn; column++) {
         const [x, y] = cellToCanvas(row, column, camera, canvasSize, this.downsampling);
@@ -159,5 +172,4 @@ class GridLayer {
       }
     }
   }
-
 }

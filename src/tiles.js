@@ -72,6 +72,14 @@ export function canvasToBiopsy(x, y, camera, canvasSize) {
   ];
 }
 
+export function biopsyDeltaToCanvas(dx, dy, camera) {
+  return [dx * camera.zoom, dy * camera.zoom];
+}
+
+export function canvasDeltaToBiopsy(dx, dy, camera) {
+  return [dx / camera.zoom, dy / camera.zoom];
+}
+
 export function biopsyToCell(x, y, downsampling) {
   return [
     Math.floor(y / (tileSize.width * downsampling)),
