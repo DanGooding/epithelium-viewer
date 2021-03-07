@@ -14,6 +14,9 @@ contextBridge.exposeInMainWorld('ipc', {
   once: (channel, callback) => {
     ipcRenderer.once(channel, (event, ...args) => {
       callback(...args);
-    })
+    });
+  },
+  removeListener: (channel, listener) => {
+    ipcRenderer.removeListener(channel, listener);
   }
 });

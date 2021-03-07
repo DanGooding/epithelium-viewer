@@ -9,26 +9,29 @@ function App() {
   const [biopsyTif, setBiopsyTif] = useState(null);
 
   useEffect(() => {
+    ipc.on(channels.FIND_QUPATH, handleFindQupathResponse);
+    ipc.on(channels.OPEN_IMAGE, handleOpenImageResponse);
+    
     ipc.send(channels.FIND_QUPATH, {select: false}); // poll the current qupath
 
-    ipc.on(channels.FIND_QUPATH, args => {
-      if (args.error) {
-        setQupath({selectionError: args.error})
-      }else {
-        setQupath({version: args.version, selectionError: null});
-      }
-    });
-
-    ipc.on(channels.OPEN_IMAGE, args => {
-      if (args.path) {
-        setBiopsyTif(args.path);
-      }
-    });
+    // clear listeners on unmount
+    return () => {
+      ipc.removeListener(channels.FIND_QUPATH, handleFindQupathResponse);
+      ipc.removeListener(channels.OPEN_IMAGE, handleOpenImageResponse);
+    };
   }, []);
 
   function selectQupath() {
-    setQupath({version: qupath.version, selectionError: null});
+    setQupath({...qupath, selectionError: null});
     ipc.send(channels.FIND_QUPATH, {select: true});
+  }
+
+  function handleFindQupathResponse(args) {
+    if (args.error) {
+      setQupath({selectionError: args.error})
+    }else {
+      setQupath({version: args.version, selectionError: null});
+    }
   }
 
   function selectBiopsyTif() {
@@ -36,6 +39,12 @@ function App() {
     ipc.send(channels.OPEN_IMAGE);
   }
 
+  function handleOpenImageResponse(args) {
+    if (args.path) {
+      setBiopsyTif(args.path);
+    }
+  }
+  
   if (qupath.version == null) {
     return (
       <div>

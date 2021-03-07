@@ -24,23 +24,38 @@ class Viewer extends React.Component {
       highlightAmt: 0.5
     };
 
+    this.handleReceiveTiles = this.handleReceiveTiles.bind(this);
+    this.handleReceiveMasks = this.handleReceiveMasks.bind(this);
     this.draw = this.draw.bind(this);
     this.handleMouseMove = this.handleMouseMove.bind(this);
     this.handleWheel = this.handleWheel.bind(this);
   }
 
   componentDidMount() {
+    ipc.on(channels.TILES, this.handleReceiveTiles);
+    ipc.on(channels.TILE_MASKS, this.handleReceiveMasks);
     ipc.send(channels.TILES, { image: this.props.biopsyTif });
-    ipc.on(channels.TILES, args => {
+  }
+
+  componentDidUpdate() {
+    this.draw();
+  }
+
+  componentWillUnmount() {
+    ipc.removeListener(channels.TILES, this.handleReceiveTiles);
+    ipc.removeListener(channels.TILE_MASKS, this.handleReceiveMasks);
+  }
+
+  handleReceiveTiles(args) {
     if (args.error) {
       console.error(args.error);
       return;
     }
     this.grid.addBiopsyTiles(args.tiles);
-      // TODO: trigger draw, rerender (grid dimensions changed)
     this.draw();
-    });
-    ipc.on(channels.TILE_MASKS, args => {
+  }
+
+  handleReceiveMasks(args) {
     if (args.error) {
       console.error(args.error);
       return;
