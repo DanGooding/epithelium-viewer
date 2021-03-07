@@ -58,17 +58,17 @@ export function expand2dArray(arr, newHeight, newWidth) {
 // - canvas: [x,y] pixels in the canvas
 // - cell: [row,column] in a particular grid layer
 
-export function biopsyToCanvas(x, y, cameraPos, zoomAmt, canvasSize) {
+export function biopsyToCanvas(x, y, camera, canvasSize) {
   return [
-    (x - cameraPos.x) * zoomAmt + canvasSize.width / 2,
-    (y - cameraPos.y) * zoomAmt + canvasSize.height / 2
+    (x - camera.x) * camera.zoom + canvasSize.width / 2,
+    (y - camera.y) * camera.zoom + canvasSize.height / 2
   ];
 }
 
-export function canvasToBiopsy(x, y, cameraPos, zoomAmt, canvasSize) {
+export function canvasToBiopsy(x, y, camera, canvasSize) {
   return [
-    (x - canvasSize.width  / 2) / zoomAmt + cameraPos.x,
-    (y - canvasSize.height / 2) / zoomAmt + cameraPos.y
+    (x - canvasSize.width  / 2) / camera.zoom + camera.x,
+    (y - canvasSize.height / 2) / camera.zoom + camera.y
   ];
 }
 
@@ -86,12 +86,12 @@ export function cellToBiopsy(row, column, downsampling) {
   ];
 }
 
-export function canvasToCell(x, y, cameraPos, zoomAmt, canvasSize, downsampling) {
-  const [biopsyX, biopsyY] = canvasToBiopsy(x, y, cameraPos, zoomAmt, canvasSize);
+export function canvasToCell(x, y, camera, canvasSize, downsampling) {
+  const [biopsyX, biopsyY] = canvasToBiopsy(x, y, camera, canvasSize);
   return biopsyToCell(biopsyX, biopsyY, downsampling);
 }
 
-export function cellToCanvas(row, column, cameraPos, zoomAmt, canvasSize, downsampling) {
+export function cellToCanvas(row, column, camera, canvasSize, downsampling) {
   const [biopsyX, biopsyY] = cellToBiopsy(row, column, downsampling);
-  return biopsyToCanvas(biopsyX, biopsyY, cameraPos, zoomAmt, canvasSize);
+  return biopsyToCanvas(biopsyX, biopsyY, camera, canvasSize);
 }

@@ -16,11 +16,11 @@ class Viewer extends React.Component {
 
     this.state = {
       // camera lives in 'biopsy' coordinate space
-      cameraPos: {
+      camera: {
         x: 0,
-        y: 0
+        y: 0,
+        zoom: 0.1
       },
-      zoomAmt: 0.1,
       highlightAmt: 0.5
     };
 
@@ -32,37 +32,27 @@ class Viewer extends React.Component {
   componentDidMount() {
     ipc.send(channels.TILES, { image: this.props.biopsyTif });
     ipc.on(channels.TILES, args => {
-      if (args.error) {
-        console.error(args.error);
-        return;
-      }
-      this.grid.addBiopsyTiles(args.tiles);
+    if (args.error) {
+      console.error(args.error);
+      return;
+    }
+    this.grid.addBiopsyTiles(args.tiles);
       // TODO: trigger draw, rerender (grid dimensions changed)
-      this.draw();
+    this.draw();
     });
     ipc.on(channels.TILE_MASKS, args => {
-      if (args.error) {
-        console.error(args.error);
-        return;
-      }
-      this.grid.addMaskTiles(args.tiles);
-      this.draw();
-    });
-  }
-
-  componentDidUpdate() {
+    if (args.error) {
+      console.error(args.error);
+      return;
+    }
+    this.grid.addMaskTiles(args.tiles);
     this.draw();
-  }
-
-  componentWillUnmount() {
-    // TODO: clear listeners
   }
 
   draw() {
     this.grid.draw(
       this.canvasRef.current.getContext('2d'), 
-      this.state.cameraPos, 
-      this.state.zoomAmt, 
+      this.state.camera,
       this.state.highlightAmt
     );
   }
@@ -73,9 +63,10 @@ class Viewer extends React.Component {
       const [maxX, maxY] = this.grid.getBounds();
       // TODO: use canvasToBiopsy to do conversion
       this.setState({
-        cameraPos: {
-          x: Math.max(0, Math.min(maxX, this.state.cameraPos.x - e.movementX / this.state.zoomAmt)),
-          y: Math.max(0, Math.min(maxY, this.state.cameraPos.y - e.movementY / this.state.zoomAmt))
+        camera: {
+          ...this.state.camera,
+          x: Math.max(0, Math.min(maxX, this.state.camera.x - e.movementX / this.state.camera.zoom)),
+          y: Math.max(0, Math.min(maxY, this.state.camera.y - e.movementY / this.state.camera.zoom))
         }
       });
     }
@@ -83,9 +74,15 @@ class Viewer extends React.Component {
   handleWheel(e) { // zoom
     // TODO: can't preventdefault here?
     if (e.deltaY < 0) {
-      this.setState({zoomAmt: Math.min(this.state.zoomAmt / 0.9, 5)});
+      this.setState({camera: {
+        ...this.state.camera, 
+        zoom: Math.min(this.state.camera.zoom / 0.9, 5)}
+      });
     } else if (e.deltaY > 0) {
-      this.setState({zoomAmt: Math.max(this.state.zoomAmt * 0.9, 0.01)});
+      this.setState({camera: {
+        ...this.state.camera, 
+        zoom: Math.max(this.state.camera.zoom * 0.9, 0.01)}
+      });
     }
   }
 
@@ -115,7 +112,7 @@ class Viewer extends React.Component {
             />
           </label>
           <br/>
-          <span>{Math.round(this.state.cameraPos.x)}, {Math.round(this.state.cameraPos.y)} px</span>
+          <span>{Math.round(this.state.camera.x)}, {Math.round(this.state.camera.y)} px</span>
           <br/>
           <span>{this.grid.getBounds().join(' x ')} px</span>
           <br/>

@@ -21,13 +21,13 @@ export class Grid {
     this.maskLayer.addLocatedTiles(locateTiles(tiles, tileSize.maskDownsamplings));
   }
 
-  draw(ctx, cameraPos, zoomAmt, highlightAmt) {
+  draw(ctx, camera, highlightAmt) {
     ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
     ctx.fillStyle = 'grey';
     ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
-    this.biopsyLayer.draw(ctx, cameraPos, zoomAmt, null, 'black');
-    this.maskLayer.draw(ctx, cameraPos, zoomAmt, () => {
+    this.biopsyLayer.draw(ctx, camera, null, 'black');
+    this.maskLayer.draw(ctx, camera, () => {
       ctx.globalAlpha = highlightAmt;
       ctx.globalCompositeOperation = 'multiply';
     }, null);
@@ -67,16 +67,16 @@ class ZoomableGridLayer {
     });
   }
 
-  draw(ctx, cameraPos, zoomAmt, setStyle, previewColor) {
+  draw(ctx, camera, setStyle, previewColor) {
     if (this.layers.size == 0) return;
     
     // TODO: use tiles from different layers based on availability
 
     let bestDownsampling = null, bestCost = null;
     for (const downsampling of this.layers.keys()) {
-      // the amount a tile is scaled to draw for this zoomAmt
+      // the amount a tile is scaled to draw for this camera.zoom
       // pick downsampling that makes this closest to 1
-      const scale = zoomAmt * downsampling;
+      const scale = camera.zoom * downsampling;
       const cost = Math.abs(Math.log(scale));
       
       if (bestDownsampling == null || cost < bestCost) {
@@ -84,7 +84,7 @@ class ZoomableGridLayer {
         bestCost = cost;
       }
     }
-    this.layers.get(bestDownsampling).draw(ctx, cameraPos, zoomAmt, setStyle, previewColor);
+    this.layers.get(bestDownsampling).draw(ctx, camera, setStyle, previewColor);
   }
 }
 
@@ -115,28 +115,28 @@ class GridLayer {
     }
   }
 
-  draw(ctx, cameraPos, zoomAmt, setStyle, previewColor) {
+  draw(ctx, camera, setStyle, previewColor) {
     const canvasSize = {width: ctx.canvas.width, height: ctx.canvas.height};
     
     // determine which cells are visible
     let [minRow, minColumn] = 
       canvasToCell(
         0, 0, 
-        cameraPos, zoomAmt, canvasSize, this.downsampling);
+        camera, canvasSize, this.downsampling);
     minRow    = Math.max(minRow, 0);
     minColumn = Math.max(minColumn, 0);
 
     let [maxRow, maxColumn] = 
       canvasToCell(
         canvasSize.width, canvasSize.height, 
-        cameraPos, zoomAmt, canvasSize, this.downsampling);
+        camera, canvasSize, this.downsampling);
     maxRow    = Math.min(maxRow,    this.numRows - 1);
     maxColumn = Math.min(maxColumn, this.numColumns - 1);
 
     for (let row = minRow; row <= maxRow; row++) {
       for (let column = minColumn; column <= maxColumn; column++) {
-        const [x, y] = cellToCanvas(row, column, cameraPos, zoomAmt, canvasSize, this.downsampling);
-        const displayTileWidth = tileSize.width * this.downsampling * zoomAmt;
+        const [x, y] = cellToCanvas(row, column, camera, canvasSize, this.downsampling);
+        const displayTileWidth = tileSize.width * this.downsampling * camera.zoom;
         
         const src = this.tiles[row][column];
         const image = this.imageLoader.get(src);
