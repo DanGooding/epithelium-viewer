@@ -34,5 +34,9 @@ module.exports = {
   },
   settingsStoreKeys: {
     QUPATH_PATH: 'qupath-path'
+  },
+  tileCounts: {
+    cacheSize: 600,
+    maxTilesToDrawPerLayer: 300
   }
 };

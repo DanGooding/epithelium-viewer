@@ -3,7 +3,7 @@ import './Viewer.css'
 import ImageLoader from './ImageLoader'
 import { Grid } from './grid';
 import { withWindowSize } from './windowSize';
-import { channels } from './shared/constants';
+import { channels, tileCounts } from './shared/constants';
 import { canvasDeltaToBiopsy } from './tiles';
 const { ipc } = window;
 
@@ -12,7 +12,7 @@ class Viewer extends React.Component {
   constructor(props) {
     super(props);
     this.canvasRef = React.createRef();
-    this.imageLoader = new ImageLoader(400);
+    this.imageLoader = new ImageLoader(tileCounts.cacheSize);
     this.grid = new Grid(this.imageLoader);
 
     this.state = {

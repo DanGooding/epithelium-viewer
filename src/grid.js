@@ -1,5 +1,5 @@
 
-import { tileSize } from './shared/constants';
+import { tileSize, tileCounts } from './shared/constants';
 import { 
   locateTiles, 
   expand2dArray, 
@@ -146,6 +146,11 @@ class GridLayer {
 
     const [[minRow, minColumn], [maxRow, maxColumn]] = this.findCellsInArea(viewArea, camera);
     
+    const numCells = (maxRow + 1 - minRow) * (maxColumn + 1 - minColumn);
+    if (numCells > tileCounts.maxTilesToDrawPerLayer) {
+      return;
+    }
+
     for (let row = minRow; row <= maxRow; row++) {
       for (let column = minColumn; column <= maxColumn; column++) {
         const [x, y] = cellToCanvas(row, column, camera, canvasSize, this.downsampling);
