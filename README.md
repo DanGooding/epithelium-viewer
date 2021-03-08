@@ -14,7 +14,10 @@ Requires node.js installed, then to install the required packages, run
 ```
 npm install
 ```
-also needs [QuPath](https://qupath.github.io/)
+also needs [QuPath](https://qupath.github.io/) to tile the biopsy images.
+
+The model weights should be put in `scripts/model/`.
+The required python packages are listed in `scripts/requirements.txt`, if using a venv, save `PYTHON=/path/to/venv/bin/python` in a `.env` file in the top level driectory.
 
 ## running the app
 Most scripts have windows specific versions, suffixed `-windows`
