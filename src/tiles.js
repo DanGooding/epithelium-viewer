@@ -3,7 +3,10 @@ import { tileSize } from './shared/constants';
 
 const tileNamePattern = /\[x=(\d+),y=(\d+),w=(\d+),h=(\d+)\].png$/;
 
+// parse tile filenames as produced by QuPaths TileExporter
+// to discover their location and size
 export function locateTiles(tiles, possibleDownsamplings) {
+
   return tiles.map(src => {
 
     const match = tileNamePattern.exec(decodeURI(src));
@@ -32,6 +35,7 @@ export function locateTiles(tiles, possibleDownsamplings) {
   });
 }
 
+//creates new arrays for the structure, but keeps the old elements
 export function shallowCopy2dArray(arr) {
   let newArr = [];
   for (const row of arr) {
@@ -57,6 +61,8 @@ export function expand2dArray(arr, newHeight, newWidth) {
 // - biopsy: [x,y] pixels in the source TIF
 // - canvas: [x,y] pixels in the canvas
 // - cell: [row,column] in a particular grid layer
+
+// camera is as in Viewer.state: {x, y, zoom}
 
 export function biopsyToCanvas(x, y, camera, canvasSize) {
   return [

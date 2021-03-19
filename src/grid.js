@@ -10,6 +10,14 @@ import {
   canvasToBiopsy 
 } from './tiles';
 
+// as explained in tiles.js, there are 3 coordinate systems:
+// - biopsy: [x,y] pixels in the source TIF
+// - canvas: [x,y] pixels in the canvas
+// - cell: [row,column] in a particular grid layer
+
+
+// represents everything that is displayed for one tif
+// holds a ZoomableGridLayer for both the biopsy image tiles, and the mask tiles
 export class Grid {
   constructor(imageLoader) {
     this.biopsyLayer = new ZoomableGridLayer(tileSize.biopsyDownsamplings, imageLoader);
@@ -43,6 +51,8 @@ export class Grid {
 
 }
 
+// holds several GridLayers all of the same kind of tiles
+// but with different downsampling, alllowing efficient yet detailed zooming
 class ZoomableGridLayer {
   constructor(downsamplings, imageLoader, drawingOptions) {
     // maps {downsampling -> GridLayer}
@@ -62,6 +72,8 @@ class ZoomableGridLayer {
     return [width, height];
   }
 
+  // incorporate tiles whose positions have been determined (by tiles/locateTiles)
+  // and are given in the form {row, colunm, src, downsampling}
   addLocatedTiles(locatedTiles) {
     let bins = new Map();
     for (const {row, column, src, downsampling} of locatedTiles) {
@@ -96,6 +108,8 @@ class ZoomableGridLayer {
   }
 }
 
+// holds tiles of a single type and downsampling
+// allows adding more, as well as drawing itself to a canvas
 class GridLayer {
   constructor(downsampling, imageLoader) {
     this.numRows = 0;
@@ -110,6 +124,8 @@ class GridLayer {
     return cellToBiopsy(this.numRows, this.numColumns, this.downsampling);
   }
 
+  // incorporate tiles whose positions have been determined 
+  // and are given in the form {row, colunm, src}
   addLocatedTiles(locatedTiles) {
     for (const {row, column, src} of locatedTiles) {
       this.numRows = Math.max(this.numRows, row + 1);
@@ -123,8 +139,8 @@ class GridLayer {
     }
   }
 
+  // determine which cells are visible in a given rectangle
   findCellsInArea([x, y, w, h]) {
-    // determine which cells are visible
     let [minRow, minColumn] = biopsyToCell(x, y, this.downsampling);
     minRow    = Math.max(minRow, 0);
     minColumn = Math.max(minColumn, 0);
@@ -143,11 +159,11 @@ class GridLayer {
       ...canvasToBiopsy(0, 0, camera, canvasSize),
       ...canvasDeltaToBiopsy(canvasSize.width, canvasSize.height, camera)
     ];
-
     const [[minRow, minColumn], [maxRow, maxColumn]] = this.findCellsInArea(viewArea, camera);
     
     const numCells = (maxRow + 1 - minRow) * (maxColumn + 1 - minColumn);
     if (numCells > tileCounts.maxTilesToDrawPerLayer) {
+      console.log(numCells);
       return;
     }
 

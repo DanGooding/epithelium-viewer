@@ -1,6 +1,4 @@
 
-# args: [dir of weights] [dir of tiles] [dir to put masks]
-#  both should be absolute
 
 import numpy as np
 import tensorflow as tf
@@ -29,6 +27,8 @@ import shutil
 import sys
 
 try:
+    # read arguments
+    # all should be absolute
     [script_path, weights_dir, tile_dir, mask_dir] = sys.argv
 except ValueError:
     print('wrong number of arguments', file=sys.stderr)
@@ -36,8 +36,6 @@ except ValueError:
 
 IMAGE_DIM = 128
 BATCH_SIZE = 16
-TRAIN_SPLIT = 0.8
-VALIDATION_SPLIT = 1 - TRAIN_SPLIT
 
 resize_and_rescale = tf.keras.Sequential([
     layers.experimental.preprocessing.Resizing(IMAGE_DIM, IMAGE_DIM),
@@ -60,7 +58,7 @@ def predict_data(weights_path, data_dir, results_dir, model="resnet34", encoder_
 
     # Load model
     model = segmentation_models.Unet(model, encoder_weights=encoder_weights)
-    model.compile('Adam', loss=DiceLoss(1.5), metrics=[iou_score, Precision(0.5), Recall(0.5)])
+    model.compile('Adam', loss=DiceLoss(0.8), metrics=[iou_score, Precision(0.5), Recall(0.5)])
     model.load_weights(weights_path).expect_partial()
 
     # Get images
@@ -77,10 +75,6 @@ def predict_data(weights_path, data_dir, results_dir, model="resnet34", encoder_
         image_name = os.path.split(image_path)[1]
 
         filename = os.path.join(results_dir, image_name)
-        # mask_pred_unsmoothed = (np.where(mask_pred > 0.5, 1, 0).reshape(IMAGE_DIM, IMAGE_DIM) * 255).astype(np.uint8)
-        # im_unsmoothed = Image.fromarray(mask_pred_unsmoothed)
-        # out_unsmoothed = im_unsmoothed.resize((512, 512))
-        # out_unsmoothed.save(filename + "_unsmoothed.png", "PNG")
 
         mask_pred_smoothed = np.asarray(output_processing.output_image_processing(mask_pred, 15, 0.5))
         mask_pred_smoothed = (mask_pred_smoothed.reshape(IMAGE_DIM, IMAGE_DIM) * 255).astype(np.uint8)

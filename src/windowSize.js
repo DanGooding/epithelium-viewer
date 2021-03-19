@@ -23,6 +23,7 @@ export function useWindowSize() {
   return windowSize;
 }
 
+// wrapper that provides {windowWidth, windowHeight} as props
 export function withWindowSize(Component) {
   return (props) => {
     const [width, height] = useWindowSize();

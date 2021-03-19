@@ -1,5 +1,6 @@
 const LRUCache = require('lru-cache');
 
+// loads images (html image elements) for given sources, caching some amount
 class ImageLoader {
 
   constructor(cacheSize) {

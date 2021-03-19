@@ -47,6 +47,7 @@ class Viewer extends React.Component {
     ipc.removeListener(channels.TILE_MASKS, this.handleReceiveMasks);
   }
 
+  // some new tiles were generated, add them to the grid and redraw
   handleReceiveTiles(args) {
     if (args.error) {
       console.error(args.error);
@@ -56,6 +57,7 @@ class Viewer extends React.Component {
     this.draw();
   }
 
+  // some new masks were generated, add them to the grid and redraw
   handleReceiveMasks(args) {
     if (args.error) {
       console.error(args.error);

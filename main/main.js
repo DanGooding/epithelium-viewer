@@ -22,6 +22,7 @@ function devFileProtocolURI(path) {
   }
 }
 
+// get the absolute path for any (non javascript) resource
 function getResourcePath(resource) {
   if (isDev) {
     return resource;
@@ -30,8 +31,10 @@ function getResourcePath(resource) {
   }
 }
 
+// persistent settings
 const settingsStore = new Store();
 
+// app setup
 function main() {
   if (isDev) {
     protocol.registerFileProtocol(devFileProtocolName, (request, callback) => {
@@ -83,9 +86,11 @@ app.on('activate', () => {
   }
 });
 
+// track things that need to be deleted/killed when the app quits
 let runningChildProcesses = new Map(); // pid: ChildProcess
 let createdTmpDirs = new Map(); // path: cleanup function
 
+// wrapper arround execFile that ensures the subprocess is killed before app quit
 function managedExecFile(path, args, callback) {
   const managedProcess = execFile(path, args, (error, stdout, stderr) => {
     runningChildProcesses.delete(managedProcess.pid);
@@ -95,6 +100,7 @@ function managedExecFile(path, args, callback) {
   return managedProcess;
 }
 
+// wrapper arround managedSpawn that ensures the subprocess is killed before app quit
 function managedSpawn(command, args, options) {
   const spawnedProcess = spawn(command, args, options);
   runningChildProcesses.set(spawnedProcess.pid, spawnedProcess);
@@ -105,6 +111,7 @@ function managedSpawn(command, args, options) {
   return spawnedProcess;
 }
 
+// wrapper around tmp.dir that ensures the directory and all its contents are deleted before the app quits
 function makeTmpDir(callback) {
   tmp.dir({unsafeCleanup: true}, (error, dirPath, cleanup) => {
     if (error) { // if this fails, something is badly wrong
@@ -130,6 +137,7 @@ function makeTmpDirs(n, callback) {
   }
 }
 
+// delete all the directories create with makeTmpDir/makeTmpDirs
 function cleanupAllTmp(callback) {
   if (createdTmpDirs.size > 0) {
     const path = createdTmpDirs.keys().next().value;
@@ -141,6 +149,7 @@ function cleanupAllTmp(callback) {
   }
 }
 
+// ensure all resources are cleaned up on quit
 app.on('before-quit', event => {
   if (createdTmpDirs.size > 0) {
     event.preventDefault();
@@ -152,6 +161,7 @@ app.on('before-quit', event => {
   }
 });
 
+// handle render process either reading or asking to set the the in use qupath executable
 ipcMain.on(channels.FIND_QUPATH, (event, args) => {
   if (args.select) {
     dialog.showOpenDialog({
@@ -182,6 +192,7 @@ ipcMain.on(channels.FIND_QUPATH, (event, args) => {
   }
 });
 
+// check that a path is actually a QuPath executable
 function testQupathPath(qupathPath, callback) {
   try {
     managedExecFile(qupathPath, ['--version'], (error, stdout, stderr) => {
@@ -201,6 +212,7 @@ function testQupathPath(qupathPath, callback) {
   }
 }
 
+// handle render process asking to let the user choose an image to view
 ipcMain.on(channels.OPEN_IMAGE, event => {
   dialog.showOpenDialog({
     properties: ['openFile'],
@@ -215,6 +227,8 @@ ipcMain.on(channels.OPEN_IMAGE, event => {
   });
 });
 
+// tile a biopsy tif using qupath, then send the tiles to the render process, 
+// then generateMasks from those tiles
 function generateTiles(image, listeningWebContents) {
   // all tiles are for viewing, some are segmented to produce masks too
   makeTmpDirs(2, ([viewOnlyTileDir, viewAndMaskTileDir]) => {
@@ -280,15 +294,18 @@ function generateTiles(image, listeningWebContents) {
   });
 }
 
-// request for tiles
+// handle render process requesting tiles
 ipcMain.on(channels.TILES, (event, { image }) => {
   generateTiles(image, event.sender);
 });
 
+// return the python interpreter to use for the neural network
 function getPython() {
   return process.env.PYTHON || (process.platform === 'win32' ? 'py' : 'python3');
 }
 
+// run the epithelium identifying neural network on every tile in a given directory
+// and send the resulting masks to the render process
 function generateMasks(tileDir, listeningWebContents) {
   makeTmpDir(maskDir => {
 

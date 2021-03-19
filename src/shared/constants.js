@@ -2,9 +2,9 @@
 // the original data is: 512px @ 3x downsampling
 // this is reduced to: {128px @ 12x} for training
 // so anything of the form {128*N px @ 3*N} can be used here
-const tileWidth = 256;
-const maskDownsamplings = [6];
-const biopsyDownsamplings = [...maskDownsamplings, 16];
+const tileWidth = 512;
+const maskDownsamplings = [3];
+const biopsyDownsamplings = [...maskDownsamplings, 8, 16];
 
 module.exports = {
   channels: {
