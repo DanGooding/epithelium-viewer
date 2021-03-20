@@ -261,9 +261,11 @@ function generateTiles(image, listeningWebContents) {
     const watcher = chokidar.watch([viewOnlyTileDir, viewAndMaskTileDir], {awaitWriteFinish: true});
 
     watcher.on('add', batchify(50, 1000, newTilePaths => {
-      listeningWebContents.send(channels.TILES, {
-        tiles: newTilePaths.map(devFileProtocolURI),
-      });
+      if (!listeningWebContents.isDestroyed()) {
+        listeningWebContents.send(channels.TILES, {
+          tiles: newTilePaths.map(devFileProtocolURI),
+        });
+      }
     }));
 
     try {
@@ -311,9 +313,11 @@ function generateMasks(tileDir, listeningWebContents) {
 
     const watcher = chokidar.watch(maskDir, {awaitWriteFinish: true});
     watcher.on('add', batchify(50, 1000, maskPaths => {
-      listeningWebContents.send(channels.TILE_MASKS, {
-        tiles: maskPaths.map(devFileProtocolURI)
-      });
+      if (!listeningWebContents.isDestroyed()) {
+        listeningWebContents.send(channels.TILE_MASKS, {
+          tiles: maskPaths.map(devFileProtocolURI)
+        });
+      }
     }));
 
     try {
