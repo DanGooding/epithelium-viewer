@@ -38,6 +38,7 @@ class Viewer extends React.Component {
     ipc.on(channels.TILES, this.handleReceiveTiles);
     ipc.on(channels.TILE_MASKS, this.handleReceiveMasks);
     ipc.send(channels.TILES, { image: this.props.biopsyTif });
+    this.draw();
   }
 
   componentDidUpdate() {

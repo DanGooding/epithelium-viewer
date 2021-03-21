@@ -92,19 +92,23 @@ class ZoomableGridLayer {
     
     // TODO: use tiles from different layers based on availability
 
-    let bestDownsampling = null, bestCost = null;
-    for (const downsampling of this.layers.keys()) {
+    let bestLayer = null, bestCost = null;
+    for (const [downsampling, layer] of this.layers.entries()) {
+      if (!layer.hasTilesToDraw(ctx, camera)) continue;
+
       // the amount a tile is scaled to draw for this camera.zoom
       // pick downsampling that makes this closest to 1
       const scale = camera.zoom * downsampling;
       const cost = Math.abs(Math.log(scale));
       
-      if (bestDownsampling == null || cost < bestCost) {
-        bestDownsampling = downsampling;
+      if (bestLayer == null || cost < bestCost) {
+        bestLayer = layer;
         bestCost = cost;
       }
     }
-    this.layers.get(bestDownsampling).draw(ctx, camera, setStyle, previewColor);
+    if (bestLayer != null) {
+      bestLayer.draw(ctx, camera, setStyle, previewColor);
+    }
   }
 }
 
@@ -152,18 +156,36 @@ class GridLayer {
     return [[minRow, minColumn], [maxRow, maxColumn]];
   }
 
-  draw(ctx, camera, setStyle, previewColor) {
+  findCellsInCanvas(ctx, camera) {
     const canvasSize = {width: ctx.canvas.width, height: ctx.canvas.height};
-    
     const viewArea = [
       ...canvasToBiopsy(0, 0, camera, canvasSize),
       ...canvasDeltaToBiopsy(canvasSize.width, canvasSize.height, camera)
     ];
-    const [[minRow, minColumn], [maxRow, maxColumn]] = this.findCellsInArea(viewArea, camera);
+    return this.findCellsInArea(viewArea, camera);
+  }
+
+  // does this layer know about any tiles in the area to be drawn? (including non-loaded tiles)
+  // this is used to defer to a lower resolution layer if the high res layer's
+  // tiles haven't been generated yet
+  hasTilesToDraw(ctx, camera) {
+    const [[minRow, minColumn], [maxRow, maxColumn]] = this.findCellsInCanvas(ctx, camera);
+    for (let row = minRow; row <= maxRow; row++) {
+      for (let column = minColumn; column <= maxColumn; column++) {
+        if (this.tiles[row][column] != null) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  draw(ctx, camera, setStyle, previewColor) {
+    const canvasSize = {width: ctx.canvas.width, height: ctx.canvas.height};
+    const [[minRow, minColumn], [maxRow, maxColumn]] = this.findCellsInCanvas(ctx, camera);
     
     const numCells = (maxRow + 1 - minRow) * (maxColumn + 1 - minColumn);
     if (numCells > tileCounts.maxTilesToDrawPerLayer) {
-      console.log(numCells);
       return;
     }
 
