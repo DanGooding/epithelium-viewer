@@ -32,7 +32,7 @@ try:
     [script_path, weights_dir, tile_dir, mask_dir] = sys.argv
 except ValueError:
     print('wrong number of arguments', file=sys.stderr)
-    exit(1)
+    sys.exit(1)
 
 IMAGE_DIM = 128
 BATCH_SIZE = 16

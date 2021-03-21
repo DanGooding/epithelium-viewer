@@ -328,15 +328,23 @@ function generateMasks(tileDir, listeningWebContents) {
       }
     }));
 
-    try {
-      const args = [
-        getResourcePath('scripts/segmenter.py'), 
-        getResourcePath(`scripts/model/`),
-        tileDir, 
-        maskDir
-      ];
+    let args = [
+      getResourcePath(`scripts/model/`),
+      tileDir, 
+      maskDir
+    ];
 
-      const pythonProcess = managedSpawn(getPython(), args);
+    // either run the python script, or the bundled executable
+    let executable;
+    if (isDev) {
+      executable = getPython();
+      args = [getResourcePath('scripts/segmenter.py'), ...args];
+    }else {
+      executable = getResourcePath('scripts/dist/segmenter/segmenter');
+    }
+
+    try {
+      const pythonProcess = managedSpawn(executable, args);
       pythonProcess.on('close', code => {
         if (code != 0) {
           listeningWebContents.send(channels.TILE_MASKS, {error: 'python script error'});
@@ -346,7 +354,7 @@ function generateMasks(tileDir, listeningWebContents) {
           watcher.close();
         }, 3000);
       });
-      
+
     }catch (error) {
       listeningWebContents.send(channels.TILE_MASKS, {error: 'python error: ' + error});
     }

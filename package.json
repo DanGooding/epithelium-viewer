@@ -27,10 +27,11 @@
     "build-react": "react-scripts build",
     "build-electron": "mkdir -p build/src && cp -r main/. build/main && cp -r src/shared/. build/src/shared",
     "build-electron-windows": "robocopy main build\\main /S || robocopy src\\shared build\\src\\shared /S || exit 0",
+    "build-python": "cd scripts && pyinstaller --noconfirm segmenter.py",
     "package-linux": "electron-builder build --linux -c.extraMetadata.main=build/main/main.js --publish never",
     "package-windows": "electron-builder build --win -c.extraMetadata.main=build/main/main.js --publish never",
     "package-mac": "electron-builder build --mac -c.extraMetadata.main=build/main/main.js --publish never",
-    "clean": "rm -rf build dist",
+    "clean": "rm -rf build dist scripts/build scripts/dist scripts/segmenter.spec",
     "clean-windows": "rmdir build /S /Q && rmdir dist /S /Q || exit 0",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
@@ -38,8 +39,7 @@
   "build": {
     "files": [
       "build/**/*",
-      "node_modules/**/*",
-      "scripts/tiler.groovy"
+      "node_modules/**/*"
     ],
     "extraResources": "scripts",
     "publish": {

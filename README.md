@@ -38,11 +38,21 @@ npm run start-electron
 each time
 
 ### building for deployment
+This produces a standalone application (depening only on QuPath).
+
+Packaging the neural net code uses [pyinstaller](https://www.pyinstaller.org/downloads.html), currently only the development release (`5.0.dev0`) seems to properly support tensorflow. It can be installed using:
+```
+pip install https://github.com/pyinstaller/pyinstaller/archive/develop.zip
+```
+
+Then to build everything:
 ```
 npm run build-react
 npm run build-electron
+npm run build-python
 ```
-Then package for the target OS (may require extra libraries for anything other than your current OS), by running one of:
+
+Then package into a standalone app using one of the following. This can only target your current OS.
 ```
 npm run build-linux
 npm run build-windows
