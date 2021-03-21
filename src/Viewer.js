@@ -28,11 +28,13 @@ class Viewer extends React.Component {
     this.handleReceiveTiles = this.handleReceiveTiles.bind(this);
     this.handleReceiveMasks = this.handleReceiveMasks.bind(this);
     this.draw = this.draw.bind(this);
+    this.handleKeydown = this.handleKeydown.bind(this);
     this.handleMouseMove = this.handleMouseMove.bind(this);
     this.handleWheel = this.handleWheel.bind(this);
   }
 
   componentDidMount() {
+    window.addEventListener('keydown', this.handleKeydown);
     ipc.on(channels.TILES, this.handleReceiveTiles);
     ipc.on(channels.TILE_MASKS, this.handleReceiveMasks);
     ipc.send(channels.TILES, { image: this.props.biopsyTif });
@@ -43,6 +45,7 @@ class Viewer extends React.Component {
   }
 
   componentWillUnmount() {
+    window.removeEventListener('keydown', this.handleKeydown);
     ipc.removeListener(channels.TILES, this.handleReceiveTiles);
     ipc.removeListener(channels.TILE_MASKS, this.handleReceiveMasks);
   }
@@ -68,41 +71,73 @@ class Viewer extends React.Component {
   }
 
   draw() {
-    this.grid.draw(
-      this.canvasRef.current.getContext('2d'), 
-      this.state.camera,
-      this.state.highlightAmt
-    );
+    if (this.canvasRef.current != null) {
+      this.grid.draw(
+        this.canvasRef.current.getContext('2d'), 
+        this.state.camera,
+        this.state.highlightAmt
+      );
+    }
+  }
+
+  handleKeydown(e) {
+    const moveSpeed = 20;
+    const zoomFactor = 0.9;
+    // TODO: when two keys are held, only one gets repeat events, so can't do diagonal movement
+    if (e.key === 'ArrowDown') {
+      this.panCamera(0, moveSpeed);
+    }else if (e.key === 'ArrowLeft') {
+      this.panCamera(-moveSpeed, 0);
+    }else if (e.key === 'ArrowRight') {
+      this.panCamera(moveSpeed, 0);
+    }else if (e.key === 'ArrowUp') {
+      this.panCamera(0, -moveSpeed);
+    }else if (e.key === '-') {
+      this.zoomCamera(zoomFactor);
+    }else if (e.key === '=') {
+      this.zoomCamera(1 / zoomFactor);
+    }else {
+      return;
+    }
   }
 
   // TODO: track zooming to mouse
   handleMouseMove(e) { // pan
     if (e.buttons != 0) { // if dragging
-      const [maxX, maxY] = this.grid.getBounds();
-      const [dx, dy] = canvasDeltaToBiopsy(-e.movementX, -e.movementY, this.state.camera);
-
-      this.setState({
-        camera: {
-          ...this.state.camera,
-          x: Math.max(0, Math.min(maxX, this.state.camera.x + dx)),
-          y: Math.max(0, Math.min(maxY, this.state.camera.y + dy))
-        }
-      });
+      this.panCamera(-e.movementX, -e.movementY);
     }
   }
   handleWheel(e) { // zoom
     // TODO: can't preventdefault here?
     if (e.deltaY < 0) {
-      this.setState({camera: {
-        ...this.state.camera, 
-        zoom: Math.min(this.state.camera.zoom / 0.9, 5)}
-      });
+      this.zoomCamera(1 / 0.9);
     } else if (e.deltaY > 0) {
-      this.setState({camera: {
-        ...this.state.camera, 
-        zoom: Math.max(this.state.camera.zoom * 0.9, 0.01)}
-      });
+      this.zoomCamera(0.9);
     }
+  }
+  
+  panCamera(canvasDX, canvasDY) {
+    this.setState((state, props) => {
+      const [maxX, maxY] = this.grid.getBounds();
+      const [dx, dy] = canvasDeltaToBiopsy(canvasDX, canvasDY, this.state.camera);
+      return {
+        camera: {
+          ...state.camera,
+          x: Math.max(0, Math.min(maxX, state.camera.x + dx)),
+          y: Math.max(0, Math.min(maxY, state.camera.y + dy))
+        }
+      }
+    });
+  }
+
+  zoomCamera(factor) {
+    this.setState((state, props) => {
+      return {
+        camera: {
+        ...state.camera, 
+        zoom: Math.max(Math.min(state.camera.zoom * factor, 5), 0.01)}
+      }
+    });
   }
 
   render() {
@@ -135,7 +170,9 @@ class Viewer extends React.Component {
           <br/>
           <span>{this.grid.getBounds().join(' x ')} px</span>
           <br/>
-          <span> Cache: {this.imageLoader.images.length}</span>
+          <span>{Math.round(this.state.camera.zoom * 1000) / 1000} x</span>
+          <br/>
+          <span>move by clicking and dragging or with arrow keys, zoom by scrolling or with [+][-]</span>
         </div>
       </div>
     );
