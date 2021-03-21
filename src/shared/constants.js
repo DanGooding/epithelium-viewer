@@ -17,6 +17,9 @@ module.exports = {
     // main -> ({path}) -> render
     OPEN_IMAGE: 'open-image',
 
+    // render -> () -> main
+    CLOSE_IMAGE: 'close-image',
+
     // render -> ({image}) -> main
     // main -> ({tiles: [string]}) -> render
     // main -> ({error}) -> render

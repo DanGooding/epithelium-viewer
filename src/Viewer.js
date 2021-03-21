@@ -155,6 +155,7 @@ class Viewer extends React.Component {
         </div>
         <div id="hud">
           <span>{this.props.biopsyTif}</span>
+          <button onClick={this.props.closeImage}>Close</button>
           <br/>
           <label>Highlight
             <input

@@ -120,18 +120,18 @@ function makeTmpDir(callback) {
       return;
     }
     createdTmpDirs.set(dirPath, cleanup);
-    callback(dirPath);
+    if (callback != null) callback(dirPath);
   });
 }
 
 function makeTmpDirs(n, callback) {
   if (n <= 0) {
-    callback([]);
+    if (callback != null) callback([]);
   }else {
     makeTmpDirs(n - 1, tmpDirs => {
       makeTmpDir(tmpDir => {
         tmpDirs.push(tmpDir);
-        callback(tmpDirs);
+        if (callback != null) callback(tmpDirs);
       });
     });
   }
@@ -144,7 +144,7 @@ function cleanupAllTmp(callback) {
     const cleanup = createdTmpDirs.get(path);
     createdTmpDirs.delete(path);
     cleanup(() => cleanupAllTmp(callback));
-  }else {
+  }else if (callback != null) {
     callback();
   }
 }
@@ -225,6 +225,14 @@ ipcMain.on(channels.OPEN_IMAGE, event => {
       event.sender.send(channels.OPEN_IMAGE, { path });
     }
   });
+});
+
+// delete/stop generating tiles for the currently open image
+ipcMain.on(channels.CLOSE_IMAGE, event => {
+  // kill qupath/python
+  // delete tiles + masks
+  runningChildProcesses.forEach(process => process.kill());
+  cleanupAllTmp();
 });
 
 // tile a biopsy tif using qupath, then send the tiles to the render process, 

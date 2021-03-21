@@ -51,6 +51,12 @@ function App() {
     }
   }
   
+  // user closed the biopsy
+  function closeImage() {
+    ipc.send(channels.CLOSE_IMAGE);
+    setBiopsyTif(null);
+  }
+
   // first prompt to find qupath
   if (qupath.version == null) {
     return (
@@ -65,6 +71,7 @@ function App() {
       <div>
         Using Qupath {qupath.version} 
         <button onClick={selectQupath}>Change</button>
+        <br/>
         <button onClick={selectBiopsyTif}>Open a Biopsy</button>
       </div>
     )
@@ -73,7 +80,7 @@ function App() {
   // otherwise an image being viewed currently
   return (
     <div>
-      <Viewer biopsyTif={biopsyTif}/>
+      <Viewer biopsyTif={biopsyTif} closeImage={closeImage}/>
     </div>
   );
 }
